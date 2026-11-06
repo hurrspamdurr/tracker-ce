@@ -169,6 +169,7 @@ class Sequencer
             FX_TYPE_TUNE,
             FX_TYPE_SLIDE_UP,
             FX_TYPE_SLIDE_DOWN,
+            FX_TYPE_MIDI_CC_BANK,   // value 0-7 selects the active CC bank for the instrument
             FX_TYPE_R30,
             FX_TYPE_AMP_ENV = FX_TYPE_R30,
             FX_TYPE_R31,

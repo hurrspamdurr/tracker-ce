@@ -620,9 +620,17 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
                     }
                     else if (isMidi)
                     {
-                        assert(ccIndex < std::size(mtProject.values.midiInstrument[0].ccOut));
+                        // Index by instrument, not MIDI channel (channels are now assignable)
+                        int midiIdx = instrument - kSampleInstrumentsCount;
+                        if (midiIdx < 0 || midiIdx >= kMidiInstrumentsCount)
+                            continue;
+                        auto& midiInstr = mtProject.values.midiInstrument[midiIdx];
+                        uint8_t bank = midiInstr.activeCcBank;
+                        if (bank >= kMidiCcBanks)
+                            bank = 0;
 
-                        ccIndex = mtProject.values.midiInstrument[ccChannel - 1].ccOut[ccIndex];
+                        assert(ccIndex < kMidiCcSlots);
+                        ccIndex = midiInstr.ccOut[bank][ccIndex];
 
                         killFxOnSlot(row, fxIndex);
                         atLeastOneFx = 1;
@@ -649,6 +657,31 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
                     }
                 }
                 break;
+
+                case fx.FX_TYPE_MIDI_CC_BANK:
+                {
+                    int instrument = stepToSend.instrument;
+                    uint8_t ccChannel = instrumentIdxToMidiChannel(instrument);
+
+                    if (ccChannel != kNoChannel && isMidiInstrument(instrument))
+                    {
+                        uint8_t bank = _fx.value;
+                        if (bank >= kMidiCcBanks)
+                            bank = kMidiCcBanks - 1;
+
+                        // Map back to midiInstrument index (channel is 1-16, array is 0-15)
+                        // Prefer using instrument index directly for bank storage
+                        int midiIdx = instrument - kSampleInstrumentsCount;
+                        if (midiIdx >= 0 && midiIdx < kMidiInstrumentsCount)
+                        {
+                            mtProject.values.midiInstrument[midiIdx].activeCcBank = bank;
+                        }
+                        killFxOnSlot(row, fxIndex);
+                        atLeastOneFx = 1;
+                    }
+                    break;
+                }
+
                 case fx.FX_TYPE_MICROTUNING:
                 {
                     int instrument = stepToSend.instrument;
@@ -3297,7 +3330,7 @@ uint8_t Sequencer::getInstrumentVelo(uint8_t instrumentIdx)
 {
     if (isMidiInstrument(instrumentIdx))
     {
-        int midiInstrumentIdx = instrumentIdxToMidiChannel(instrumentIdx) - 1;
+        int midiInstrumentIdx = instrumentIdx - kSampleInstrumentsCount;
         return mtProject.values.midiInstrument[midiInstrumentIdx].velocity;
     }
     else if (isSynthInstrument(instrumentIdx))
@@ -3316,7 +3349,7 @@ uint8_t Sequencer::getInstrumentVolume(uint8_t instrumentIdx)
 {
     if (isMidiInstrument(instrumentIdx))
     {
-        int midiInstrumentIdx = instrumentIdxToMidiChannel(instrumentIdx) - 1;
+        int midiInstrumentIdx = instrumentIdx - kSampleInstrumentsCount;
         return velocityToVolume(mtProject.values.midiInstrument[midiInstrumentIdx].velocity);
     }
     else if (isSynthInstrument(instrumentIdx))
@@ -3335,8 +3368,8 @@ AUDIO_CORE_RAM uint8_t Sequencer::getInstrumentMidiOffset(uint8_t instrument)
 {
     if (isMidiInstrument(instrument))
     {
-        int midiInstrumentIdx = instrumentIdxToMidiChannel(instrument) - 1;
-        assert(midiInstrumentIdx >= 0);
+        int midiInstrumentIdx = instrument - kSampleInstrumentsCount;
+        assert(midiInstrumentIdx >= 0 && midiInstrumentIdx < kMidiInstrumentsCount);
         return mtProject.values.midiInstrument[midiInstrumentIdx].offset;
     }
 
@@ -3814,7 +3847,12 @@ AUDIO_CORE_RAM int instrumentIdxToMidiChannel(int instrument)
     }
     else if (isMidiInstrument(instrument))
     {
-        return instrument - kSampleInstrumentsCount + 1;
+        // Use the per-instrument assignable MIDI channel (1-16)
+        int idx = instrument - kSampleInstrumentsCount;
+        uint8_t ch = mtProject.values.midiInstrument[idx].channel;
+        if (ch < 1 || ch > 16)
+            ch = (uint8_t)(idx + 1);   // fallback to original 1:1 mapping
+        return ch;
     }
     else if (isSynthInstrument(instrument))
     {

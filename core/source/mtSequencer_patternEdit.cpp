@@ -1770,6 +1770,8 @@ AUDIO_CORE_RAM int16_t Sequencer::getFxMax(uint8_t fxID, bool forRandom)
         case fx.FX_TYPE_SEND_CC_E:
         case fx.FX_TYPE_SEND_CC_F: return 127;
 
+        case fx.FX_TYPE_MIDI_CC_BANK: return kMidiCcBanks - 1;  // 0-7
+
         case fx.FX_TYPE_FILTER_LFO:
         case fx.FX_TYPE_PANNING_LFO:
         case fx.FX_TYPE_FINETUNE_LFO:

@@ -375,6 +375,7 @@ class cInstrumentEditor : public ModuleBase
 
     void showParamsVelocity();
     void showParamsOffset();
+    void showParamsChannel();
     void showParamsCC(uint8_t index);
 
     void setDefaultMidiVelocity();

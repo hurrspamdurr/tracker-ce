@@ -406,6 +406,7 @@ class InterfaceGlobals
         Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_D,
         Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_E,
         Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_F,
+        Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CC_BANK,
         Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
         Sequencer::strFxConsts::enFxType::FX_TYPE_BREAK_PATTERN,
 
@@ -466,6 +467,7 @@ class InterfaceGlobals
                                                                   "e - CC E",
                                                                   "f - CC F",
 #endif
+                                                                  "B - CC Bank",
                                                                   "0 - MIDI Chord",
                                                                   "x - Break pattern" };
 
@@ -522,6 +524,7 @@ class InterfaceGlobals
                                                                        "CC E",
                                                                        "CC F",
 #endif
+                                                                       "CC Bank",
                                                                        "MIDI Chord",
                                                                        "Break pattern" };
 
@@ -535,7 +538,7 @@ class InterfaceGlobals
         &fxNames[29][0], &fxNames[30][0], &fxNames[31][0], &fxNames[32][0], &fxNames[33][0],
         &fxNames[34][0], &fxNames[35][0], &fxNames[36][0], &fxNames[37][0], &fxNames[38][0],
         &fxNames[39][0], &fxNames[40][0], &fxNames[41][0], &fxNames[42][0],
-        &fxNames[43][0], &fxNames[44][0], &fxNames[45][0]
+        &fxNames[43][0], &fxNames[44][0], &fxNames[45][0], &fxNames[46][0]
     };
 
     static constexpr const char* ptrAllFxNamesShort[FX_COUNT + 1] = {
@@ -585,7 +588,7 @@ class InterfaceGlobals
         &fxShortNames[42][0],
         &fxShortNames[43][0],
         &fxShortNames[44][0],
-        &fxShortNames[45][0]
+        &fxShortNames[45][0], &fxShortNames[46][0]
     };
 
     static constexpr const char* const* ptrFxNames = &ptrAllFxNames[1];

@@ -293,6 +293,12 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\n"
     "\n"
     "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CC_BANK,
+    "Destination: MIDI \n\n"
+    "Selects the active CC bank (0-7) for the MIDI instrument on this step.\n"
+    "Banks 0-3 are pre-filled for DSI Tetra, banks 4-7 for Novation Drumstation.\n"
+    "Subsequent a-f FX use the CC numbers from the selected bank.\n\n"
+    "From 0 to 7.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
     "Destination: MIDI, Synth \n\nSends many MIDI notes or sets up Arp."
     "\n"
@@ -567,6 +573,12 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\n"
     "\n"
     "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CC_BANK,
+    "Destination: MIDI \n\n"
+    "Selects the active CC bank (0-7) for the MIDI instrument on this step.\n"
+    "Banks 0-3 are pre-filled for DSI Tetra, banks 4-7 for Novation Drumstation.\n"
+    "Subsequent a-f FX use the CC numbers from the selected bank.\n\n"
+    "From 0 to 7.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
     "Destination: MIDI \n\nSends many MIDI notes or sets up Arp."
     "\n"

@@ -306,19 +306,26 @@ void cFileManager::getDefaultValues(struct strMtValues* source)
 
     for (uint8_t channel = 0; channel < 16; channel++)
     {
-        source->midiInstrument[channel].channel = channel;
+        source->midiInstrument[channel].channel = channel + 1;  // MIDI channels are 1-16
         source->midiInstrument[channel].velocity = DEFAULT_MIDI_VELOCITY;
         source->midiInstrument[channel].offset = 0;
-        source->midiInstrument[channel].ccOut[0] = MIDI_CC_MODWHEEL;
-        source->midiInstrument[channel].ccOut[1] = MIDI_CC_GLIDE;
-        source->midiInstrument[channel].ccOut[2] = MIDI_CC_CHAN_VOLUME;
-        source->midiInstrument[channel].ccOut[3] = MIDI_CC_EXPRESSION;
-        source->midiInstrument[channel].ccOut[4] = MIDI_CC_SUSTAIN;
-        source->midiInstrument[channel].ccOut[5] = MIDI_CC_SPECIAL_PC;
-        for (uint8_t i = 0; i < 7; i++)
-        {
+        source->midiInstrument[channel].activeCcBank = 0;
+        // Copy the same defaults defined in strMidiInstr (Tetra + Drumstation banks)
+        static const uint8_t kDefaultCcOut[kMidiCcBanks][kMidiCcSlots] = {
+            { 20, 22, 24, 26, 28, 29 },
+            { 102, 103, 106, 104, 109, 110 },
+            { 113, 118, 119, 75, 76, 114 },
+            { 1, 7, 11, 74, 52, 53 },
+            { 23, 25, 20, 22, 33, 35 },
+            { 55, 56, 58, 59, 61, 62 },
+            { 41, 43, 45, 53, 65, 70 },
+            { 7, 105, 108, 109, 110, 111 }
+        };
+        for (uint8_t b = 0; b < kMidiCcBanks; b++)
+            for (uint8_t s = 0; s < kMidiCcSlots; s++)
+                source->midiInstrument[channel].ccOut[b][s] = kDefaultCcOut[b][s];
+        for (uint8_t i = 0; i < 6; i++)
             source->midiInstrument[channel].reserved[i] = 0;
-        }
     }
 
     for (uint8_t channel = 0; channel < (16 - 6); channel++)

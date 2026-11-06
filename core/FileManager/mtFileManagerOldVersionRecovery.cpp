@@ -244,18 +244,24 @@ static void recoveryProjectVersion10()
     for (uint8_t i = 0; i < 16; i++)
     {
         v->midiInstrument[i].velocity = 127;
-        v->midiInstrument[i].channel = i;
+        v->midiInstrument[i].channel = i + 1;  // MIDI channels are 1-16
         v->midiInstrument[i].offset = 0;
-        v->midiInstrument[i].ccOut[0] = MIDI_CC_MODWHEEL;
-        v->midiInstrument[i].ccOut[1] = MIDI_CC_GLIDE;
-        v->midiInstrument[i].ccOut[2] = MIDI_CC_CHAN_VOLUME;
-        v->midiInstrument[i].ccOut[3] = MIDI_CC_EXPRESSION;
-        v->midiInstrument[i].ccOut[4] = MIDI_CC_SUSTAIN;
-        v->midiInstrument[i].ccOut[5] = MIDI_CC_SPECIAL_PC;
-        for (uint8_t j = 0; j < 7; j++)
-        {
+        v->midiInstrument[i].activeCcBank = 0;
+        static const uint8_t kDefaultCcOut[kMidiCcBanks][kMidiCcSlots] = {
+            { 20, 22, 24, 26, 28, 29 },
+            { 102, 103, 106, 104, 109, 110 },
+            { 113, 118, 119, 75, 76, 114 },
+            { 1, 7, 11, 74, 52, 53 },
+            { 23, 25, 20, 22, 33, 35 },
+            { 55, 56, 58, 59, 61, 62 },
+            { 41, 43, 45, 53, 65, 70 },
+            { 7, 105, 108, 109, 110, 111 }
+        };
+        for (uint8_t b = 0; b < kMidiCcBanks; b++)
+            for (uint8_t s = 0; s < kMidiCcSlots; s++)
+                v->midiInstrument[i].ccOut[b][s] = kDefaultCcOut[b][s];
+        for (uint8_t j = 0; j < 6; j++)
             v->midiInstrument[i].reserved[j] = 0;
-        }
     }
 
     v->midiInstrument[0].velocity = v->lineInVolume;

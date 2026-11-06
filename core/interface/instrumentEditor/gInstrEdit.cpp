@@ -1115,6 +1115,7 @@ void cInstrumentEditor::showInstrumentMidiParams()
 
     showParamsVelocity();
     showParamsOffset();
+    showParamsChannel();
 
     display.setRemoveControlStyle(label[1], controlStyleShowBitmap);
     display.setRemoveControlStyle(label[6], controlStyleShowBitmap);
@@ -1542,6 +1543,25 @@ void cInstrumentEditor::showParamsOffset()
 
     display.refreshControl(label[1]);
     display.refreshControl(barControl[1]);
+}
+
+void cInstrumentEditor::showParamsChannel()
+{
+    // Show current MIDI channel as secondary text on the Offset label
+    if (mtProject.values.lastUsedInstrument < kSampleInstrumentsCount)
+        return;
+
+    uint8_t temp_ch =
+      mtProject.values
+        .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
+        .channel;
+    if (temp_ch < 1 || temp_ch > 16)
+        temp_ch = 1;
+
+    char buf[16];
+    sprintf(buf, "CH%02d", temp_ch);
+    display.setControlText2(label[1], buf);
+    display.refreshControl(label[1]);
 }
 
 void cInstrumentEditor::showParamsCC(uint8_t index)

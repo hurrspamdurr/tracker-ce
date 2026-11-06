@@ -62,6 +62,24 @@ static void functEffectBack();
 
 void changeParamsVelocity(int16_t value);
 void changeParamsOffset(int16_t value);
+void changeParamsChannel(int16_t value);
+// midi only – assignable MIDI channel (1-16)
+void changeParamsChannel(int16_t value)
+{
+    uint8_t* temp_ch =
+      &mtProject.values
+         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
+         .channel;
+
+    int v = (int)*temp_ch + value;
+    if (v < 1) v = 1;
+    if (v > 16) v = 16;
+    *temp_ch = (uint8_t)v;
+
+    IE->showParamsChannel();
+    newFileManager.setProjectStructChanged();
+}
+
 void changeParamsCC(int8_t index, int16_t value);
 void changeParamsCCA(int16_t value);
 void changeParamsCCB(int16_t value);
@@ -520,6 +538,7 @@ void cInstrumentEditor::changeParamValue(int value, ValueChangeSource source)
             case 35:
             case 36:
             case 37: changeParamsCC(mode_places - 32, invert ? -value : value); break;
+            case 38: changeParamsChannel(value); break;
 
             case 20: changeSynthCCList(invert ? -value : value); break;
             case 21: changeInstList(invert ? -value : value); break;
@@ -671,6 +690,7 @@ static void functSelectParams(uint8_t button, uint8_t state)
             case 35: IE->addNode(changeParamsCCD, node); break;
             case 36: IE->addNode(changeParamsCCE, node); break;
             case 37: IE->addNode(changeParamsCCF, node); break;
+            case 38: IE->addNode(changeParamsChannel, node); break;
         }
 
         if ((node > 2) && (IE->mode == mtInstEditModeEnv))
@@ -2079,10 +2099,11 @@ void changeParamsCC(int8_t index, int16_t value)
 
     value = clamp<int>(value, -10, 10);
 
-    uint8_t* temp_cc =
-      &mtProject.values
-         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
-         .ccOut[index];
+    auto& midiInstr = mtProject.values
+         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount];
+    uint8_t bank = midiInstr.activeCcBank;
+    if (bank >= kMidiCcBanks) bank = 0;
+    uint8_t* temp_cc = &midiInstr.ccOut[bank][index];
 
     if (*temp_cc + value < 0)
         *temp_cc = 0;
@@ -3430,10 +3451,11 @@ void cInstrumentEditor::setDefaultMidiOffset()
 
 void cInstrumentEditor::setDefaultMidiCC(uint8_t index)
 {
-    uint8_t* temp_cc =
-      &mtProject.values
-         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
-         .ccOut[index];
+    auto& midiInstr = mtProject.values
+         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount];
+    uint8_t bank = midiInstr.activeCcBank;
+    if (bank >= kMidiCcBanks) bank = 0;
+    uint8_t* temp_cc = &midiInstr.ccOut[bank][index];
 
     switch (index)
     {
@@ -3461,12 +3483,11 @@ uint8_t cInstrumentEditor::getActualMidiInstrumentCCValue(int ccIndex)
         return 0;
     }
 
-    return clamp<int>(
-      mtProject.values
-        .midiInstrument[mtProject.values.lastUsedInstrument - MIDI_INSTRUMENTS_START_IDX]
-        .ccOut[ccIndex],
-      0,
-      ccNumbersCount - 1);
+    auto& midiInstr = mtProject.values
+        .midiInstrument[mtProject.values.lastUsedInstrument - MIDI_INSTRUMENTS_START_IDX];
+    uint8_t bank = midiInstr.activeCcBank;
+    if (bank >= kMidiCcBanks) bank = 0;
+    return clamp<int>(midiInstr.ccOut[bank][ccIndex], 0, ccNumbersCount - 1);
 }
 
 float cInstrumentEditor::calcInstrumentVolumeDecybelValue(uint8_t val)

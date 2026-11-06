@@ -40,7 +40,7 @@ const uint8_t PRODUCT_BETA = FW_VER_BETA;
 const char firmwareVersionLabelFormat[] = "%d.%d.%d " FW_EDITION_NAME;
 const char firmwareVersionLabelFormatBeta[] = "%d.%d.%d " FW_EDITION_NAME " beta %d";
 
-const uint8_t PROJECT_FILE_VERSION = 17;   // wersja struktury pliku projektu
+const uint8_t PROJECT_FILE_VERSION = 18;   // wersja struktury pliku projektu
 const uint8_t INSTRUMENT_FILE_VERSION = 9; // wersja struktury pliku instrumentu
 const uint8_t PATTERN_FILE_VERSION = 6;
 
@@ -113,6 +113,9 @@ static constexpr uint8_t kTotalInstrumentsCount =
 
 static constexpr int kSynthMacrosCount = 6;
 
+static constexpr uint8_t kMidiCcBanks = 8;
+static constexpr uint8_t kMidiCcSlots = 6;
+
 static constexpr int kCCMinValue = 0;
 static constexpr int kCCMidValue = 63;
 static constexpr int kCCMaxValue = 127;
@@ -124,7 +127,7 @@ const uint8_t PATTERN_INDEX_MIN = 1;
 const uint8_t PATTERN_INDEX_MAX = 255;
 
 const uint8_t FX_MAX = 49;
-const uint8_t FX_COUNT = 46;
+const uint8_t FX_COUNT = 47;
 const uint8_t FX_COUNT_HIDDEN_FXes = 1; // ile fxów na końcu listy jest ukrytych
 
 const uint8_t FX_VALUE_MAX = 127;
@@ -944,14 +947,34 @@ struct strMtValues
 
     struct strMidiInstr
     {
-        uint8_t channel; // na razie nieuzywane
+        uint8_t channel; // MIDI output channel 1-16 (assignable)
         uint8_t velocity = DEFAULT_MIDI_VELOCITY;
-        uint8_t ccOut[6] = {
-            MIDI_CC_MODWHEEL,   MIDI_CC_GLIDE,   MIDI_CC_CHAN_VOLUME,
-            MIDI_CC_EXPRESSION, MIDI_CC_SUSTAIN, MIDI_CC_SPECIAL_PC,
+        // 8 banks × 6 slots
+        // Banks 0-3 aimed at DSI Tetra, banks 4-7 at Novation Drumstation
+        uint8_t ccOut[kMidiCcBanks][kMidiCcSlots] = {
+            // ---- Banks 0-3 : DSI Tetra ----
+            // Bank 0 – Oscillators
+            { 20, 22, 24, 26, 28, 29 },      // Osc1 Freq, Osc1 Shape, Osc2 Freq, Osc2 Shape, Osc Mix, Noise
+            // Bank 1 – Filter
+            { 102, 103, 106, 104, 109, 110 },// Cutoff, Resonance, Env Amt, Key Amt, F.Attack, F.Decay
+            // Bank 2 – Amp / VCA
+            { 113, 118, 119, 75, 76, 114 }, // VCA Level, A.Attack, A.Decay, A.Sustain, A.Release, Pan
+            // Bank 3 – Performance + Feedback
+            { 1, 7, 11, 74, 52, 53 },       // Mod Wheel, Volume, Expression, Brightness, Fb Vol, Fb Gain
+
+            // ---- Banks 4-7 : Novation Drumstation ----
+            // Bank 4 – 808 Kick + Snare (most used)
+            { 23, 25, 20, 22, 33, 35 },     // 8BD Tune, 8BD Decay, 8BD FrontCut, 8BD Dist, 8SD Tune, 8SD Decay
+            // Bank 5 – 808 Hats + Crash
+            { 55, 56, 58, 59, 61, 62 },     // 8CH Tune, 8CH Decay, 8OH Tune, 8OH Decay, 8CC Tune, 8CC Decay
+            // Bank 6 – 808 Toms + Percussion
+            { 41, 43, 45, 53, 65, 70 },     // Low/Mid/High Tom Tune, Cowbell Tune, Conga, Maracas
+            // Bank 7 – Global + 909 BD/SD highlights
+            { 7, 105, 108, 109, 110, 111 } // Master Volume, 9BD FrontCut, 9BD Tune, 9BD Decay, 9SD Tune, 9SD Decay
         };
+        uint8_t activeCcBank = 0;   // 0 … 7
         uint8_t offset = 0;
-        uint8_t reserved[7] = { 0, 0, 0, 0, 0, 0, 0 };
+        uint8_t reserved[6] = { 0 };
     } midiInstrument[kMidiInstrumentsCount];
 
     uint16_t delayFilterFrequency;

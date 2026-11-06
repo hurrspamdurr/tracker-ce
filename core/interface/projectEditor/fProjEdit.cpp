@@ -455,9 +455,10 @@ uint8_t cProjectEditor::loadProjectValues()
     // midi instruments
     for (uint8_t channel = 0; channel < 16; channel++)
     {
-        if (mtProject.values.midiInstrument[channel].channel > 16)
+        if (mtProject.values.midiInstrument[channel].channel < 1 ||
+            mtProject.values.midiInstrument[channel].channel > 16)
         {
-            mtProject.values.midiInstrument[channel].channel = channel;
+            mtProject.values.midiInstrument[channel].channel = channel + 1;
         }
 
         if (mtProject.values.midiInstrument[channel].velocity > 127)
@@ -465,13 +466,12 @@ uint8_t cProjectEditor::loadProjectValues()
             mtProject.values.midiInstrument[channel].velocity = 127;
         }
 
-        for (uint8_t cc = 0; cc < 6; cc++)
-        {
-            if (mtProject.values.midiInstrument[channel].ccOut[cc] > 130)
-            {
-                mtProject.values.midiInstrument[channel].ccOut[cc] = 0;
-            }
-        }
+        for (uint8_t b = 0; b < kMidiCcBanks; b++)
+            for (uint8_t cc = 0; cc < kMidiCcSlots; cc++)
+                if (mtProject.values.midiInstrument[channel].ccOut[b][cc] > 130)
+                    mtProject.values.midiInstrument[channel].ccOut[b][cc] = 0;
+        if (mtProject.values.midiInstrument[channel].activeCcBank >= kMidiCcBanks)
+            mtProject.values.midiInstrument[channel].activeCcBank = 0;
     }
 
     // last used
