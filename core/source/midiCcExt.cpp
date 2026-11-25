@@ -257,8 +257,10 @@ static const char* roleFor(MidiCcLegend legend, int value)
     return drumGmRole(value);
 }
 
-static char gLabelText[3][kMidiCcValueCount][16];
-static const char* gLabelPtr[3][kMidiCcValueCount];
+// Formatted rows ("105 FLfrq") are not flash strings. Keep them out of
+// SRAM_DTC / internal RAM; Plus and Mini have little of that left.
+__NOINIT(EXTERNAL_RAM) static char gLabelText[3][kMidiCcValueCount][16];
+__NOINIT(EXTERNAL_RAM) static const char* gLabelPtr[3][kMidiCcValueCount];
 static bool gLabelsReady = false;
 
 static void ensureLabels()
