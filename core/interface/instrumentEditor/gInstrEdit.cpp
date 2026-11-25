@@ -1,5 +1,6 @@
 #include "core/songTimer.h"
 #include "instrumentEditor/instrumentEditor.h"
+#include "midiCcExt.h"
 #include "mtWavetableEnvelopes.h"
 #include "fileManager.h"
 #include <stdio.h>
@@ -50,26 +51,6 @@ const char* const filterModeFunctLabels[filterModeCount] = {
     "Low-pass",
     "High-pass",
     "Band-pass",
-};
-
-const char* const ccNameLabels[ccNumbersCount] = {
-    "0 Bank",   "1 ModWh", "2 Brth",   "3",        "4 Foot",   "5 Glide",  "6 Data",  "7 ChVol",
-    "8 Balnc",  "9",       "10 Pan",   "11 Exp",   "12",       "13",       "14",      "15",
-    "16",       "17",      "18",       "19",       "20",       "21",       "22",      "23",
-    "24",       "25",      "26",       "27",       "28",       "29",       "30",      "31",
-    "32 Bank",  "33 Modw", "34 Brth",  "35",       "36 Foot",  "37 Glid",  "38 Data", "39 ChVo",
-    "40 Blnc",  "41",      "42 Pan",   "43 Exp",   "44",       "45",       "46",      "47",
-    "48",       "49",      "50",       "51",       "52",       "53",       "54",      "55",
-    "56",       "57",      "58",       "59",       "60",       "61",       "62",      "63",
-    "64 Sust",  "65 Port", "66 Sste",  "67 SftP",  "68 Lgto",  "69 Hld2",  "70",      "71",
-    "72",       "73",      "74",       "75",       "76",       "77",       "78",      "79",
-    "80",       "81",      "82",       "83",       "84 Porta", "85",       "86",      "87",
-    "88 HDVel", "89",      "90",       "91",       "92",       "93",       "94",      "95",
-    "96 Dat+",  "97 Dat-", "98 NRPNL", "99 NRPNM", "100 RPNL", "101 RPNM", "102",     "103",
-    "104",      "105",     "106",      "107",      "108",      "109",      "110",     "111",
-    "112",      "113",     "114",      "115",      "116",      "117",      "118",     "119",
-    "120 SOff", "121 Rst", "122 Locl", "123 NOff", "124",      "125",      "126",     "127",
-    "Prg Chg",  "Chan AT", "Poly AT",
 };
 
 const char* const envelopesLabels[autoDestCount] = {
@@ -303,16 +284,16 @@ void cInstrumentEditor::initDisplayControls()
     instArrows.bitmaps[1].xValue = (800 / 8) * 6 + (800 / 16);
     instArrows.bitmaps[1].yValue = 450;
 
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < 8; i++)
     {
-        ccNameListData[i].linesCount = 14;
+        ccNameListData[i].linesCount = 12;
         ccNameListData[i].start = 0;
-        ccNameListData[i].length = ccNumbersCount;
-        ccNameListData[i].data = (char**)ccNameLabels;
+        ccNameListData[i].length = kMidiCcValueCount;
+        ccNameListData[i].data = (char**)midiCcValueLabels(MidiCcLegend::Drum);
 
         prop.style = controlStyleBackground |
                      (display.getTheme().bottomScreenShadow > 0 ? controlStyleBottomShadow : 0);
-        prop.x = (800 / 8) * (i + 2) + 1;
+        prop.x = (800 / 8) * i + 1;
         prop.y = 29;
         prop.w = 800 / 8 - 3;
         prop.h = 394;
@@ -361,9 +342,17 @@ void cInstrumentEditor::showTitleBar()
             break;
         case mtInstEditModeEnv: label = "Instrument Automation 2/2"; break;
         case mtInstEditModeMidi:
-            label = "MIDI Instrument Parameters";
+        {
+            static char midiTitle[40];
+            snprintf(midiTitle,
+                     sizeof(midiTitle),
+                     "MIDI Instrument Parameters %d/%d",
+                     midiCcPage + 1,
+                     kMidiCcPageCount);
+            label = midiTitle;
             songTimer.hide();
             break;
+        }
         case mtInstEditModeInstrSynth: label = "Instrument MIDI Mapping"; break;
 #if GUI_HANDLE_SYNTH
         case mtInstEditModeSynth: label = "Synth Parameters 1/2"; break;
@@ -886,7 +875,7 @@ void cInstrumentEditor::showInstrumentParams()
     display.setControlHide(modelListControl);
     display.setControlHide(imgGridControl);
 
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < 8; i++)
     {
         display.setControlHide(ccNameListControl[i]);
     }
@@ -1024,7 +1013,7 @@ void cInstrumentEditor::showInstrumentSynth()
     display.setControlHide(modelListControl);
     display.setControlHide(imgGridControl);
 
-    for (uint8_t i = 0; i < 6; i++)
+    for (uint8_t i = 0; i < 8; i++)
     {
         display.setControlHide(ccNameListControl[i]);
     }
@@ -1064,81 +1053,76 @@ void cInstrumentEditor::showInstrumentMidiParams()
     showTitleBar();
     refreshFramePosition();
 
+    const int columns = midiCcPageColumns(midiCcPage);
+    const int instr = int(mtProject.values.lastUsedInstrument) - MIDI_INSTRUMENTS_START_IDX;
+    // Eight columns of named rows is more text than the stock six. Fewer rows
+    // keep the screen inside the display budget that used to freeze the device.
+    const int listRows = columns >= 8 ? 9 : 12;
+
+    uint32_t shadow = (display.getTheme().bottomScreenShadow > 0 ? controlStyleBottomShadow : 0);
+    uint32_t gradient = (display.getTheme().barShadow > 0 ? controlStyleGradient : 0);
+
     for (uint8_t i = 0; i < 8; i++)
     {
         display.setControlValue(label[i], 1);
         display.setControlColors(label[i], display.getTheme().activeLabelsColors);
         display.setRemoveControlStyle(label[i], controlStyleLimitTextWidth);
+        display.setRemoveControlStyle(label[i], controlStyleShowBitmap);
+        display.setRemoveControlStyle(label[i], controlStyleSpecialFx2);
         display.setControlStyle2(label[i],
                                  controlStyleCenterX | controlStyleCenterY | controlStyleFont2);
+        display.setControlPosition(label[i], (800 / 8) * i + (800 / 16), -1);
+        display.setControlText2(label[i], "");
+        display.setControlHide(label[i]);
         display.setControlHide(barControl[i]);
+        display.setControlHide(ccNameListControl[i]);
     }
 
-    uint32_t shadow = (display.getTheme().bottomScreenShadow > 0 ? controlStyleBottomShadow : 0);
-    uint32_t gradient = (display.getTheme().barShadow > 0 ? controlStyleGradient : 0);
-
-    display.setControlStyle(barControl[0],
-                            (controlStyleShow | controlStyleValue_0_100 | controlStyleBackground) |
-                              shadow | gradient);
-    display.setControlStyle(barControl[1],
-                            (controlStyleShow | controlStyleValue_0_100 | controlStyleBackground) |
-                              shadow | gradient);
-    display.setControlShow(barControl[0]);
-    display.setControlShow(barControl[1]);
-
-    display.setControlValue(label[0], 1);
-    display.setControlValue(label[1], 1);
-    display.setControlValue(label[2], 1);
-    display.setControlValue(label[3], 1);
-    display.setControlValue(label[4], 1);
-    display.setControlValue(label[5], 1);
-    display.setControlValue(label[6], 1);
-    display.setControlValue(label[7], 1);
-
-    display.setControlText(label[0], "Velocity");
-    display.setControlText(label[1], "Offset");
-    display.setControlText(label[2], "CC A");
-    display.setControlText(label[3], "CC B");
-    display.setControlText(label[4], "CC C");
-    display.setControlText(label[5], "CC D");
-    display.setControlText(label[6], "CC E");
-    display.setControlText(label[7], "CC F");
-
-    display.setControlText2(label[0], "");
-    display.setControlText2(label[1], "");
-    display.setControlText2(label[2], "");
-    display.setControlText2(label[3], "");
-    display.setControlText2(label[4], "");
-    display.setControlText2(label[5], "");
-    display.setControlText2(label[6], "");
-    display.setControlText2(label[7], "");
-
-    showParamsVelocity();
-    showParamsOffset();
-
-    display.setRemoveControlStyle(label[1], controlStyleShowBitmap);
-    display.setRemoveControlStyle(label[6], controlStyleShowBitmap);
-    display.setRemoveControlStyle(label[7], controlStyleSpecialFx2);
-    display.setRemoveControlStyle(label[6], controlStyleSpecialFx2);
-
-    display.setControlPosition(label[1], (800 / 8) * 1 + (800 / 16), -1);
-    display.setControlPosition(label[6], (800 / 8) * 6 + (800 / 16), -1);
-
-    for (uint8_t i = 0; i < 8; i++)
+    for (int col = 0; col < columns; col++)
     {
-        display.setControlShow(label[i]);
-        display.refreshControl(label[i]);
+        const int slot = midiCcColumnSlot(midiCcPage, col);
+        const char* title = "CC";
+        if (slot == -2)
+            title = "Velocity";
+        else if (slot == -1)
+            title = "Offset";
+        else if (slot >= 0)
+            title = midiCcColumnTitle(slot);
+
+        display.setControlText(label[col], title);
+        display.setControlShow(label[col]);
+        display.refreshControl(label[col]);
+
+        if (slot < 0)
+        {
+            display.setControlStyle(barControl[col],
+                                    (controlStyleShow | controlStyleValue_0_100 |
+                                     controlStyleBackground) |
+                                      shadow | gradient);
+            display.setControlShow(barControl[col]);
+        }
+        else if (instr >= 0 && instr < kMidiInstrumentsCount)
+        {
+            const uint8_t value = midiCcSlotValue(instr, slot);
+            ccNameListData[col].linesCount = listRows;
+            ccNameListData[col].length = kMidiCcValueCount;
+            ccNameListData[col].start = value;
+            ccNameListData[col].data = (char**)midiCcValueLabels(midiCcLegendForSlot(slot));
+            display.setControlData(ccNameListControl[col], &ccNameListData[col]);
+            display.setControlShow(ccNameListControl[col]);
+        }
     }
 
-    //-------------------------------------
-
-    for (uint8_t i = 0; i < 6; i++)
+    if (midiCcPage == 0)
     {
-        showParamsCC(i);
-        ccNameListData[i].start = getActualMidiInstrumentCCValue(i);
-        display.setControlData(ccNameListControl[i], &ccNameListData[i]);
-        display.setControlShow(ccNameListControl[i]);
-        display.refreshControl(ccNameListControl[i]);
+        showParamsVelocity();
+        showParamsOffset();
+    }
+    for (int col = 0; col < columns; col++)
+    {
+        const int slot = midiCcColumnSlot(midiCcPage, col);
+        if (slot >= 0)
+            showParamsCC(uint8_t(slot));
     }
 
     //-------------------------------------
@@ -1548,20 +1532,29 @@ void cInstrumentEditor::showParamsCC(uint8_t index)
 {
     if (mtProject.values.lastUsedInstrument < MIDI_INSTRUMENTS_START_IDX ||
         mtProject.values.lastUsedInstrument >= MIDI_INSTRUMENTS_START_IDX + kMidiInstrumentsCount ||
-        index >= 6)
+        index >= kMidiCcSlotCount)
     {
         return;
     }
 
-    uint8_t value = getActualMidiInstrumentCCValue(index);
+    int column = -1;
+    const int columns = midiCcPageColumns(midiCcPage);
+    for (int col = 0; col < columns; col++)
+    {
+        if (midiCcColumnSlot(midiCcPage, col) == int(index))
+            column = col;
+    }
+    if (column < 0)
+        return;
 
-    int labelIdx = index + 2;
-    snprintf(labelText[labelIdx], 8, "%d", value);
+    const int instr = int(mtProject.values.lastUsedInstrument) - MIDI_INSTRUMENTS_START_IDX;
+    const uint8_t value = midiCcSlotValue(instr, index);
+    snprintf(labelText[column], sizeof(labelText[column]), "%u", value);
 
-    display.setControlValue(ccNameListControl[index], value);
-    display.setControlText2(label[labelIdx], labelText[labelIdx]);
-    display.refreshControl(label[labelIdx]);
-    display.refreshControl(ccNameListControl[index]);
+    display.setControlValue(ccNameListControl[column], value);
+    display.setControlText2(label[column], labelText[column]);
+    display.refreshControl(label[column]);
+    display.refreshControl(ccNameListControl[column]);
 }
 
 void cInstrumentEditor::showParamsVolume()
@@ -1758,7 +1751,7 @@ void cInstrumentEditor::refreshFramePosition()
         }
         case mtInstEditModeMidi:
         {
-            frameData.placesCount = 8;
+            frameData.placesCount = midiCcPageColumns(midiCcPage);
             frameData.startPlace = 0;
             frameData.places[0] = &framesPlaces[0][0];
             frameData.places[1] = &framesPlaces[1][0];
@@ -1844,10 +1837,8 @@ void cInstrumentEditor::hideControlUnderMenu()
     display.setControlHide(barControl[4]);
     display.setControlHide(barControl[5]);
 
-    display.setControlHide(ccNameListControl[0]);
-    display.setControlHide(ccNameListControl[1]);
-    display.setControlHide(ccNameListControl[2]);
-    display.setControlHide(ccNameListControl[3]);
+    for (uint8_t i = 0; i < 8; i++)
+        display.setControlHide(ccNameListControl[i]);
 
     display.refreshControl(label[5]);
 }

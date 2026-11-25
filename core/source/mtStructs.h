@@ -123,9 +123,9 @@ const uint8_t SYNTH_INSTRUMENTS_START_IDX = MIDI_INSTRUMENTS_START_IDX + kMidiIn
 const uint8_t PATTERN_INDEX_MIN = 1;
 const uint8_t PATTERN_INDEX_MAX = 255;
 
-const uint8_t FX_MAX = 49;
-const uint8_t FX_COUNT = 46;
+const uint8_t FX_COUNT = 66;
 const uint8_t FX_COUNT_HIDDEN_FXes = 1; // ile fxów na końcu listy jest ukrytych
+const uint8_t FX_MAX = FX_COUNT;        // menu index at or above this is not an FX
 
 const uint8_t FX_VALUE_MAX = 127;
 

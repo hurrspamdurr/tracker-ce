@@ -75,7 +75,8 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\nRV - increasing volume Roll."
     "\nRn - decreasing note Roll."
     "\nRN - increasing note Roll."
-    "\nRR - random note Roll.",
+    "\nRR - random note Roll."
+    "\nA MIDI CC in the other column is sent on every hit. A fade roll scales that value with the velocity.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_ARP,
     "Destination: Synth, MIDI \n\nCombine with the Chord effect (0xx) to arpeggiate in the "
     "given tempo divider, either in raising /, falling \\, or "
@@ -245,6 +246,22 @@ const char* const fxDescriptions[FX_COUNT] = {
     "Sets the Grain Length for an Instrument in Granular Playback mode.\n\n"
     "0-50% maps 1ms to 100ms, 50-100% maps 100ms to 1000ms (clamped to sample length).\n\n"
     "From 0% to 100%.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
+    "Destination: MIDI, Synth \n\nSends many MIDI notes or sets up Arp."
+    "\n"
+    "Numbers represent semitones above the base note."
+    " For example, C-4 047 will play a major chord:"
+    " C-4 (base note), E-4 (base+4), and G-4 (base+7)."
+    "\nTry:"
+    "\n027: Sus2   057: Sus4"
+    "\n037: Min    047: Maj"
+    "\n05C: Open4  07C: Open5"
+    "\n0379: Min6  037A: Min7"
+    "\n0479: Maj6  047A: Maj7"
+    "\n047B: MajMaj7"
+    "\nAfter 057B, inversions:"
+    "\n038: Maj/1st  059: Maj/2nd"
+    "\n049: Min/1st  058: Min/2nd",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_A,
     "Destination: MIDI, Synth \n\nSends MIDI CC number set to A in MIDI Instrument Parameters."
     "\n"
@@ -293,22 +310,106 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\n"
     "\n"
     "From 0 to 127.",
-    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
-    "Destination: MIDI, Synth \n\nSends many MIDI notes or sets up Arp."
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_G,
+    "Destination: MIDI \n\nSends MIDI CC number set to G in MIDI Instrument Parameters."
     "\n"
-    "Numbers represent semitones above the base note."
-    " For example, C-4 047 will play a major chord:"
-    " C-4 (base note), E-4 (base+4), and G-4 (base+7)."
-    "\nTry:"
-    "\n027: Sus2   057: Sus4"
-    "\n037: Min    047: Maj"
-    "\n05C: Open4  07C: Open5"
-    "\n0379: Min6  037A: Min7"
-    "\n0479: Maj6  047A: Maj7"
-    "\n047B: MajMaj7"
-    "\nAfter 057B, inversions:"
-    "\n038: Maj/1st  059: Maj/2nd"
-    "\n049: Min/1st  058: Min/2nd",
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_H,
+    "Destination: MIDI \n\nSends MIDI CC number set to H in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_I,
+    "Destination: MIDI \n\nSends MIDI CC number set to I in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_J,
+    "Destination: MIDI \n\nSends MIDI CC number set to J in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_K,
+    "Destination: MIDI \n\nSends MIDI CC number set to K in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_L,
+    "Destination: MIDI \n\nSends MIDI CC number set to L in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_M,
+    "Destination: MIDI \n\nSends MIDI CC number set to M in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_N,
+    "Destination: MIDI \n\nSends MIDI CC number set to N in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_O,
+    "Destination: MIDI \n\nSends MIDI CC number set to O in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_P,
+    "Destination: MIDI \n\nSends MIDI CC number set to P in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Q,
+    "Destination: MIDI \n\nSends MIDI CC number set to Q in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_R,
+    "Destination: MIDI \n\nSends MIDI CC number set to R in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_S,
+    "Destination: MIDI \n\nSends MIDI CC number set to S in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_T,
+    "Destination: MIDI \n\nSends MIDI CC number set to T in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_U,
+    "Destination: MIDI \n\nSends MIDI CC number set to U in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_V,
+    "Destination: MIDI \n\nSends MIDI CC number set to V in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_W,
+    "Destination: MIDI \n\nSends MIDI CC number set to W in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_X,
+    "Destination: MIDI \n\nSends MIDI CC number set to X in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Y,
+    "Destination: MIDI \n\nSends MIDI CC number set to Y in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Z,
+    "Destination: MIDI \n\nSends MIDI CC number set to Z in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_BREAK_PATTERN,
     "Destination: Pattern \n\n"
     "Breaks current pattern playback and jumps to the next pattern.",
@@ -384,7 +485,8 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\nRV - increasing volume Roll."
     "\nRn - decreasing note Roll."
     "\nRN - increasing note Roll."
-    "\nRR - random note Roll.",
+    "\nRR - random note Roll."
+    "\nA MIDI CC in the other column is sent on every hit. A fade roll scales that value with the velocity.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_ARP,
     "Destination:  MIDI \n\nCombine with the Chord effect (0xx) to arpeggiate in the "
     "given tempo divider, either in raising /, falling \\, or "
@@ -537,6 +639,22 @@ const char* const fxDescriptions[FX_COUNT] = {
     "Sets the Grain Length for an Instrument in Granular Playback mode.\n\n"
     "0-50% maps 1ms to 100ms, 50-100% maps 100ms to 1000ms (clamped to sample length).\n\n"
     "From 0% to 100%.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
+    "Destination: MIDI \n\nSends many MIDI notes or sets up Arp."
+    "\n"
+    "Numbers represent semitones above the base note."
+    " For example, C-4 047 will play a major chord:"
+    " C-4 (base note), E-4 (base+4), and G-4 (base+7)."
+    "\nTry:"
+    "\n027: Sus2   057: Sus4"
+    "\n037: Min    047: Maj"
+    "\n05C: Open4  07C: Open5"
+    "\n0379: Min6  037A: Min7"
+    "\n0479: Maj6  047A: Maj7"
+    "\n047B: MajMaj7"
+    "\nAfter 057B, inversions:"
+    "\n038: Maj/1st  059: Maj/2nd"
+    "\n049: Min/1st  058: Min/2nd",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_A,
     "Destination: MIDI \n\nSends MIDI CC number set to A in MIDI Instrument Parameters."
     "\n"
@@ -567,22 +685,106 @@ const char* const fxDescriptions[FX_COUNT] = {
     "\n"
     "\n"
     "From 0 to 127.",
-    // Sequencer::strFxConsts::enFxType::FX_TYPE_MIDI_CHORD,
-    "Destination: MIDI \n\nSends many MIDI notes or sets up Arp."
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_G,
+    "Destination: MIDI \n\nSends MIDI CC number set to G in MIDI Instrument Parameters."
     "\n"
-    "Numbers represent semitones above the base note."
-    " For example, C-4 047 will play a major chord:"
-    " C-4 (base note), E-4 (base+4), and G-4 (base+7)."
-    "\nTry:"
-    "\n027: Sus2   057: Sus4"
-    "\n037: Min    047: Maj"
-    "\n05C: Open4  07C: Open5"
-    "\n0379: Min6  037A: Min7"
-    "\n0479: Maj6  047A: Maj7"
-    "\n047B: MajMaj7"
-    "\nAfter 057B, inversions:"
-    "\n038: Maj/1st  059: Maj/2nd"
-    "\n049: Min/1st  058: Min/2nd",
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_H,
+    "Destination: MIDI \n\nSends MIDI CC number set to H in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_I,
+    "Destination: MIDI \n\nSends MIDI CC number set to I in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_J,
+    "Destination: MIDI \n\nSends MIDI CC number set to J in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_K,
+    "Destination: MIDI \n\nSends MIDI CC number set to K in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_L,
+    "Destination: MIDI \n\nSends MIDI CC number set to L in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_M,
+    "Destination: MIDI \n\nSends MIDI CC number set to M in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_N,
+    "Destination: MIDI \n\nSends MIDI CC number set to N in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_O,
+    "Destination: MIDI \n\nSends MIDI CC number set to O in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_P,
+    "Destination: MIDI \n\nSends MIDI CC number set to P in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Q,
+    "Destination: MIDI \n\nSends MIDI CC number set to Q in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_R,
+    "Destination: MIDI \n\nSends MIDI CC number set to R in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_S,
+    "Destination: MIDI \n\nSends MIDI CC number set to S in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_T,
+    "Destination: MIDI \n\nSends MIDI CC number set to T in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_U,
+    "Destination: MIDI \n\nSends MIDI CC number set to U in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_V,
+    "Destination: MIDI \n\nSends MIDI CC number set to V in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_W,
+    "Destination: MIDI \n\nSends MIDI CC number set to W in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_X,
+    "Destination: MIDI \n\nSends MIDI CC number set to X in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Y,
+    "Destination: MIDI \n\nSends MIDI CC number set to Y in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
+    // Sequencer::strFxConsts::enFxType::FX_TYPE_SEND_CC_Z,
+    "Destination: MIDI \n\nSends MIDI CC number set to Z in MIDI Instrument Parameters."
+    "\n"
+    "\n"
+    "From 0 to 127.",
     // Sequencer::strFxConsts::enFxType::FX_TYPE_BREAK_PATTERN,
     "Destination: Pattern \n\n"
     "Breaks current pattern playback and jumps to the next pattern.",

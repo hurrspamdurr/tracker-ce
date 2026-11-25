@@ -4,6 +4,7 @@
 #include "fileManager.h"
 #include "fileManagerDefs.h"
 #include "fileTransfer.h"
+#include "midiCcExt.h"
 
 #if FILEMANAGER_HANDLE_SYNTH == 1
 #include "Synth.h"
@@ -182,7 +183,14 @@ void ProjectSave::copyProject()
     if (loadStatus != fileTransferEnd)
     {
         operationError();
+        return;
     }
+
+    // The project image on the card is a copy of Workspace/project.mt. CC G..Z
+    // are not in that image, so write the side file in both places.
+    saveMidiCcExtBeside(cProjectFileNameInWorkspace);
+    if (!saveMidiCcExtBeside(destProjectFilePath))
+        operationError();
 }
 
 bool ProjectSave::copyPaterns(int& idx)
