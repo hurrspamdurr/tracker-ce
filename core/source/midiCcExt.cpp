@@ -9,16 +9,12 @@
 
 // Not in strMtProject: that object sits in internal RAM, and the project file
 // image must stay the stock size (see mtFileManagerOldVersionRecovery.cpp).
+// Do not touch this from a static constructor. On the original Tracker the
+// SDRAM controller is started in initHardware(), which runs after
+// __libc_init_array(). A write here before that hangs the CPU on the unclocked
+// external bus, so the firmware update reaches 100% and the UI never appears.
 __NOINIT(EXTERNAL_RAM)
 static uint8_t gMidiCcExt[kMidiInstrumentsCount][kMidiCcExtCount];
-
-namespace
-{
-struct MidiCcExtBoot
-{
-    MidiCcExtBoot() { resetMidiCcExt(); }
-} midiCcExtBoot;
-}
 
 static const uint8_t kDefaultCc[kMidiCcSlotCount] = {
     1,  5,  7,  11, 64, 128, 74, 71, 73, 72, 91, 93, 10,

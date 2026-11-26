@@ -5,6 +5,7 @@
 #include "core/interface.h"
 #include "elapsedMillis.h"
 #include "fileManager.h"
+#include "midiCcExt.h"
 #include "mtAudioEngine.h"
 #include "mtAudioExport.h"
 #include "mtConfig.h"
@@ -96,6 +97,9 @@ const char* Tracker::getVersion()
 void TrackerImpl::init(Platform* platform)
 {
     this->platform = platform;
+
+    // External RAM is up: initHardware() has already clocked the SDRAM.
+    resetMidiCcExt();
 
     initWavetableEnvelopes();
 
