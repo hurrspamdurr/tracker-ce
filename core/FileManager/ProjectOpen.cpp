@@ -3,6 +3,7 @@
 #include "fileManager.h"
 #include "fileManagerDefs.h"
 #include "fileTransfer.h"
+#include "midiCcExt.h"
 
 #if FILEMANAGER_HANDLE_SYNTH == 1
 #include "Synth.h"
@@ -169,6 +170,10 @@ void ProjectOpen::loadProjectFileFromSd()
         if (!newFileManager.loadProjectFileFormFileStruct(&mtProject, &fileManagerProjectBuffer))
         {
             operationError();
+        }
+        else
+        {
+            loadMidiCcExtBeside(projectFilePath);
         }
     }
     else if (loadStatus >= fileTransferError)

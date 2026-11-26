@@ -47,6 +47,15 @@ static void functSwitchMode();
 
 static void functSelectParams(uint8_t button, uint8_t state);
 
+static void changeMidiCol0(int16_t value);
+static void changeMidiCol1(int16_t value);
+static void changeMidiCol2(int16_t value);
+static void changeMidiCol3(int16_t value);
+static void changeMidiCol4(int16_t value);
+static void changeMidiCol5(int16_t value);
+static void changeMidiCol6(int16_t value);
+static void changeMidiCol7(int16_t value);
+
 static void functInstrSynthScreenButtons(uint8_t button, uint8_t state);
 
 static void functSwitchToSends(uint8_t button, uint8_t state);
@@ -63,12 +72,6 @@ static void functEffectBack();
 void changeParamsVelocity(int16_t value);
 void changeParamsOffset(int16_t value);
 void changeParamsCC(int8_t index, int16_t value);
-void changeParamsCCA(int16_t value);
-void changeParamsCCB(int16_t value);
-void changeParamsCCC(int16_t value);
-void changeParamsCCD(int16_t value);
-void changeParamsCCE(int16_t value);
-void changeParamsCCF(int16_t value);
 
 static void onNoteKeyboardHide();
 
@@ -100,6 +103,8 @@ void cInstrumentEditor::start(uint32_t options)
 #endif
               if (mtProject.values.lastUsedInstrument >= MIDI_INSTRUMENTS_START_IDX)
             {
+                if (mode != mtInstEditModeMidi)
+                    midiCcPage = 0;
                 mode = mtInstEditModeMidi;
             }
             else
@@ -142,6 +147,8 @@ void cInstrumentEditor::start(uint32_t options)
             }
             else if (isMidiInstrument(mtProject.values.lastUsedInstrument))
             {
+                if (mode != mtInstEditModeMidi)
+                    midiCcPage = 0;
                 mode = mtInstEditModeMidi;
             }
             else if (isSampleInstrument(mtProject.values.lastUsedInstrument))
@@ -168,6 +175,8 @@ void cInstrumentEditor::start(uint32_t options)
 #endif
               if (mtProject.values.lastUsedInstrument >= MIDI_INSTRUMENTS_START_IDX)
             {
+                if (mode != mtInstEditModeMidi)
+                    midiCcPage = 0;
                 mode = mtInstEditModeMidi;
             }
             else if (mode != mtInstEditModeParams && mode != mtInstEditModeEnv)
@@ -439,6 +448,16 @@ void cInstrumentEditor::changeParamValue(int value, ValueChangeSource source)
     {
         stepThroughNodes(value, invert);
     }
+    else if (mode == mtInstEditModeMidi)
+    {
+        const int slot = midiCcColumnSlot(midiCcPage, selectedPlace[mode]);
+        if (slot == -2)
+            changeParamsVelocity(value);
+        else if (slot == -1)
+            changeParamsOffset(value);
+        else if (slot >= 0)
+            changeParamsCC(int8_t(slot), invert ? -value : value);
+    }
     else
     {
         uint8_t mode_places = selectedPlace[mode] + mode * 10;
@@ -662,15 +681,15 @@ static void functSelectParams(uint8_t button, uint8_t state)
                     IE->addNode(cInstrumentEditor::changeSelectedLfoAmount, node);
                 break;
 
-            // midi params
-            case 30: IE->addNode(changeParamsVelocity, node); break;
-            case 31: IE->addNode(changeParamsOffset, node); break;
-            case 32: IE->addNode(changeParamsCCA, node); break;
-            case 33: IE->addNode(changeParamsCCB, node); break;
-            case 34: IE->addNode(changeParamsCCC, node); break;
-            case 35: IE->addNode(changeParamsCCD, node); break;
-            case 36: IE->addNode(changeParamsCCE, node); break;
-            case 37: IE->addNode(changeParamsCCF, node); break;
+            // midi params. The column follows the CC page that is open.
+            case 30: IE->addNode(changeMidiCol0, node); break;
+            case 31: IE->addNode(changeMidiCol1, node); break;
+            case 32: IE->addNode(changeMidiCol2, node); break;
+            case 33: IE->addNode(changeMidiCol3, node); break;
+            case 34: IE->addNode(changeMidiCol4, node); break;
+            case 35: IE->addNode(changeMidiCol5, node); break;
+            case 36: IE->addNode(changeMidiCol6, node); break;
+            case 37: IE->addNode(changeMidiCol7, node); break;
         }
 
         if ((node > 2) && (IE->mode == mtInstEditModeEnv))
@@ -822,6 +841,20 @@ static void functLeft()
         return;
     }
 
+    if (IE->mode == mtInstEditModeMidi)
+    {
+        if (IE->selectedPlace[IE->mode] > 0)
+            IE->selectedPlace[IE->mode]--;
+        else if (IE->midiCcPage > 0)
+        {
+            IE->midiCcPage--;
+            IE->selectedPlace[IE->mode] = midiCcPageColumns(IE->midiCcPage) - 1;
+            IE->showInstrumentMidiParams();
+        }
+        IE->activateLabelsBorder();
+        return;
+    }
+
     if ((IE->isEffectsWindow) && (IE->mode == mtInstEditModeParams))
     {
         if (IE->selectedPlaceSends > 0)
@@ -851,6 +884,21 @@ static void functRight()
 {
     if (IE->frameData.multiSelActiveNum != 0)
     {
+        return;
+    }
+
+    if (IE->mode == mtInstEditModeMidi)
+    {
+        const int last = midiCcPageColumns(IE->midiCcPage) - 1;
+        if (IE->selectedPlace[IE->mode] < last)
+            IE->selectedPlace[IE->mode]++;
+        else if (IE->midiCcPage + 1 < kMidiCcPageCount)
+        {
+            IE->midiCcPage++;
+            IE->selectedPlace[IE->mode] = 0;
+            IE->showInstrumentMidiParams();
+        }
+        IE->activateLabelsBorder();
         return;
     }
 
@@ -2072,53 +2120,20 @@ void changeParamsOffset(int16_t value)
 
 void changeParamsCC(int8_t index, int16_t value)
 {
-    if (index > 5)
-    {
+    if (index < 0 || index >= kMidiCcSlotCount)
         return;
-    }
+    if (mtProject.values.lastUsedInstrument < MIDI_INSTRUMENTS_START_IDX)
+        return;
 
     value = clamp<int>(value, -10, 10);
-
-    uint8_t* temp_cc =
-      &mtProject.values
-         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
-         .ccOut[index];
-
-    if (*temp_cc + value < 0)
-        *temp_cc = 0;
-    else if (*temp_cc + value > 130)
-        *temp_cc = 130;
-    else
-        *temp_cc += value;
+    const int instr = int(mtProject.values.lastUsedInstrument) - MIDI_INSTRUMENTS_START_IDX;
+    const int current = midiCcSlotValue(instr, index);
+    const int next = clamp<int>(current + value, 0, 130);
+    setMidiCcSlotValue(instr, index, uint8_t(next));
 
     IE->showParamsCC(index);
 
     newFileManager.setProjectStructChanged();
-}
-
-void changeParamsCCA(int16_t value)
-{
-    changeParamsCC(0, value);
-}
-void changeParamsCCB(int16_t value)
-{
-    changeParamsCC(1, value);
-}
-void changeParamsCCC(int16_t value)
-{
-    changeParamsCC(2, value);
-}
-void changeParamsCCD(int16_t value)
-{
-    changeParamsCC(3, value);
-}
-void changeParamsCCE(int16_t value)
-{
-    changeParamsCC(4, value);
-}
-void changeParamsCCF(int16_t value)
-{
-    changeParamsCC(5, value);
 }
 
 //======================================================================================================================
@@ -2944,7 +2959,7 @@ static void functInstrument(uint8_t state)
         if (IE->mode == mtInstEditModeMidi)
         {
             // duzo czcionek w CC, schowajmy listy
-            for (uint8_t i = 0; i < 6; i++)
+            for (uint8_t i = 0; i < 8; i++)
             {
                 display.setControlHide(IE->ccNameListControl[i]);
             }
@@ -3018,8 +3033,39 @@ static void functNote(uint8_t value)
 #endif
 }
 
+static void changeMidiColumn(uint8_t column, int16_t value)
+{
+    const int slot = midiCcColumnSlot(IE->midiCcPage, column);
+    if (slot == -2)
+        changeParamsVelocity(value);
+    else if (slot == -1)
+        changeParamsOffset(value);
+    else if (slot >= 0)
+        changeParamsCC(int8_t(slot), value);
+}
+static void changeMidiCol0(int16_t value) { changeMidiColumn(0, value); }
+static void changeMidiCol1(int16_t value) { changeMidiColumn(1, value); }
+static void changeMidiCol2(int16_t value) { changeMidiColumn(2, value); }
+static void changeMidiCol3(int16_t value) { changeMidiColumn(3, value); }
+static void changeMidiCol4(int16_t value) { changeMidiColumn(4, value); }
+static void changeMidiCol5(int16_t value) { changeMidiColumn(5, value); }
+static void changeMidiCol6(int16_t value) { changeMidiColumn(6, value); }
+static void changeMidiCol7(int16_t value) { changeMidiColumn(7, value); }
+
 void cInstrumentEditor::setDefaultValue(uint8_t place)
 {
+    if (place >= 30 && place <= 37)
+    {
+        const int slot = midiCcColumnSlot(midiCcPage, place - 30);
+        if (slot == -2)
+            setDefaultMidiVelocity();
+        else if (slot == -1)
+            setDefaultMidiOffset();
+        else if (slot >= 0)
+            setDefaultMidiCC(uint8_t(slot));
+        return;
+    }
+
     switch (place)
     {
         case 0: setDefaultVolume(); break;
@@ -3083,14 +3129,6 @@ void cInstrumentEditor::setDefaultValue(uint8_t place)
                 setDefaultLfoAmount();
             break;
         }
-        case 30: setDefaultMidiVelocity(); break;
-        case 31: setDefaultMidiOffset(); break;
-        case 32:
-        case 33:
-        case 34:
-        case 35:
-        case 36:
-        case 37: setDefaultMidiCC(place - 22); break;
         default: break;
     }
 }
@@ -3430,21 +3468,13 @@ void cInstrumentEditor::setDefaultMidiOffset()
 
 void cInstrumentEditor::setDefaultMidiCC(uint8_t index)
 {
-    uint8_t* temp_cc =
-      &mtProject.values
-         .midiInstrument[mtProject.values.lastUsedInstrument - kSampleInstrumentsCount]
-         .ccOut[index];
+    if (index >= kMidiCcSlotCount)
+        return;
+    if (mtProject.values.lastUsedInstrument < MIDI_INSTRUMENTS_START_IDX)
+        return;
 
-    switch (index)
-    {
-        case 0: *temp_cc = MIDI_CC_MODWHEEL; break;
-        case 1: *temp_cc = MIDI_CC_GLIDE; break;
-        case 2: *temp_cc = MIDI_CC_CHAN_VOLUME; break;
-        case 3: *temp_cc = MIDI_CC_EXPRESSION; break;
-        case 4: *temp_cc = MIDI_CC_SUSTAIN; break;
-        case 5: *temp_cc = MIDI_CC_SPECIAL_PC; break;
-        default: return;
-    }
+    const int instr = int(mtProject.values.lastUsedInstrument) - MIDI_INSTRUMENTS_START_IDX;
+    setMidiCcSlotValue(instr, index, defaultMidiCcValue(index));
 
     IE->showParamsCC(index);
 
@@ -3453,7 +3483,8 @@ void cInstrumentEditor::setDefaultMidiCC(uint8_t index)
 
 uint8_t cInstrumentEditor::getActualMidiInstrumentCCValue(int ccIndex)
 {
-    assert(ccIndex < 6);
+    if (ccIndex < 0 || ccIndex >= kMidiCcSlotCount)
+        return 0;
 
     if (mtProject.values.lastUsedInstrument < MIDI_INSTRUMENTS_START_IDX ||
         mtProject.values.lastUsedInstrument >= MIDI_INSTRUMENTS_START_IDX + kMidiInstrumentsCount)
@@ -3462,11 +3493,10 @@ uint8_t cInstrumentEditor::getActualMidiInstrumentCCValue(int ccIndex)
     }
 
     return clamp<int>(
-      mtProject.values
-        .midiInstrument[mtProject.values.lastUsedInstrument - MIDI_INSTRUMENTS_START_IDX]
-        .ccOut[ccIndex],
+      midiCcSlotValue(int(mtProject.values.lastUsedInstrument) - MIDI_INSTRUMENTS_START_IDX,
+                      ccIndex),
       0,
-      ccNumbersCount - 1);
+      kMidiCcValueCount - 1);
 }
 
 float cInstrumentEditor::calcInstrumentVolumeDecybelValue(uint8_t val)

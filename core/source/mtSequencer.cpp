@@ -7,6 +7,7 @@
 #include "fileManager.h"
 #include "log.h"
 #include "mtAudioEngine.h"
+#include "midiCcExt.h"
 #include "mtSequencer.h"
 #include "mtStructs.h"
 #include "sampleRecorder/sampleRecorder.h"
@@ -513,7 +514,32 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
             }
 #endif
 
-            uint8_t ccIndex = 0;
+            const int ccSlot = strFxConsts::ccSlotFromFx(_fx.type);
+            if (ccSlot >= 0)
+            {
+                // A roll in the other column sends this CC on every hit instead.
+                if (isMidiInstrument(stepToSend.instrument))
+                {
+                    if (!stepCarriesRoll(stepToSend))
+                    {
+                        const uint8_t sent = _fx.value > 127 ? 127 : _fx.value;
+                        sendMidiCcSlot(uint8_t(ccSlot), sent, &stepToSend);
+                    }
+                    killFxOnSlot(row, fxIndex);
+                    atLeastOneFx = 1;
+                }
+                else if (isSynthInstrument(stepToSend.instrument))
+                {
+                    // CC A..F are synth macros and already returned above. G..Z are not.
+                    killFxOnSlot(row, fxIndex);
+                    atLeastOneFx = 1;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+            else
             switch (_fx.type)
             {
 
@@ -574,81 +600,6 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
 
                     break;
 
-                case fx.FX_TYPE_SEND_CC_F:
-                {
-                    ccIndex += 1;
-                    [[fallthrough]];
-                }
-                case fx.FX_TYPE_SEND_CC_E:
-                {
-                    ccIndex += 1;
-                    [[fallthrough]];
-                }
-                case fx.FX_TYPE_SEND_CC_D:
-                {
-                    ccIndex += 1;
-                    [[fallthrough]];
-                }
-                case fx.FX_TYPE_SEND_CC_C:
-                {
-                    ccIndex += 1;
-                    [[fallthrough]];
-                }
-                case fx.FX_TYPE_SEND_CC_B:
-                {
-                    ccIndex += 1;
-                    [[fallthrough]];
-                }
-                case fx.FX_TYPE_SEND_CC_A:
-                {
-                    // todo or last used on track?
-                    int instrument = stepToSend.instrument;
-                    uint8_t ccChannel = 0;
-                    ccChannel = instrumentIdxToMidiChannel(instrument);
-
-                    if (ccChannel == kNoChannel)
-                    {
-                        continue;
-                    }
-                    bool isSynth = isSynthInstrument(instrument);
-                    bool isMidi = isMidiInstrument(instrument);
-
-                    if (isSynth)
-                    {
-                        // synth macro is handled by engine few lines above
-                        assert(false);
-                    }
-                    else if (isMidi)
-                    {
-                        assert(ccIndex < std::size(mtProject.values.midiInstrument[0].ccOut));
-
-                        ccIndex = mtProject.values.midiInstrument[ccChannel - 1].ccOut[ccIndex];
-
-                        killFxOnSlot(row, fxIndex);
-                        atLeastOneFx = 1;
-                        if (ccIndex < 128)
-                        {
-                            sendCC(ccIndex, _fx.value, ccChannel, isSynth);
-                        }
-                        else if (ccIndex == MIDI_CC_SPECIAL_PC)
-                        {
-                            sendProgramChange(_fx.value, ccChannel, isSynth);
-                        }
-                        else if (ccIndex == MIDI_CC_SPECIAL_CHAN_AT)
-                        {
-                            sendAfterTouch(_fx.value, ccChannel, isSynth);
-                        }
-                        else if (ccIndex == MIDI_CC_SPECIAL_POLY_AT)
-                        {
-                            sendPolyPressure(stepToSend.note, _fx.value, ccChannel, isSynth);
-                        }
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-                break;
                 case fx.FX_TYPE_MICROTUNING:
                 {
                     int instrument = stepToSend.instrument;
@@ -991,6 +942,8 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
                 stepToSend.note = clamp<int>(stepToSend.note + playerRow.tuneMidi.tune, 0, 127);
             }
 
+            if (stepCarriesRoll(stepToSend))
+                sendStepMidiCcs(row, &stepToSend);
             sendNoteOn(row, &stepToSend);
 
             playerRow.stepOpen = 1;
@@ -1143,6 +1096,8 @@ AUDIO_CORE_RAM void Sequencer::play_microStep(int row)
                     {
                         stopOpenNoteOnTrack(row, true);
                     }
+                    if (stepCarriesRoll(playerRow.stepContRoll))
+                        sendStepMidiCcs(row, &playerRow.stepContRoll);
                     sendNoteOn(row, &playerRow.stepContRoll);
                     playerRow.noteOpen = 1;
                     playerRow.noteTimer = 0;
@@ -2448,6 +2403,85 @@ void Sequencer::sendMidiChordOff([[maybe_unused]] uint8_t track,
                             instrumentIdxToMidiChannel(step->instrument),
                             isSynthInstrument(step->instrument));
         }
+    }
+}
+
+int Sequencer::strFxConsts::ccSlotFromFx(uint8_t type)
+{
+    if (type >= FX_TYPE_SEND_CC_A && type <= FX_TYPE_SEND_CC_E)
+        return int(type - FX_TYPE_SEND_CC_A);
+    if (type == FX_TYPE_SEND_CC_F)
+        return 5;
+    if (type >= FX_TYPE_SEND_CC_G && type <= FX_TYPE_SEND_CC_Z)
+        return 6 + int(type - FX_TYPE_SEND_CC_G);
+    return -1;
+}
+
+bool Sequencer::stepCarriesRoll(const strPlayer::strPlayerTrack::strSendStep& step)
+{
+    for (int column = 0; column < 2; column++)
+    {
+        if (step.fx[column].type == fx.FX_TYPE_ROLL &&
+            rollValToPeriod(step.fx[column].value) != fx.ROLL_PERIOD_NONE)
+            return true;
+    }
+    return false;
+}
+
+void Sequencer::sendMidiCcSlot(uint8_t slot,
+                               uint8_t value,
+                               const strPlayer::strPlayerTrack::strSendStep* step)
+{
+    if (!step || slot >= kMidiCcSlotCount)
+        return;
+    const uint8_t channel = instrumentIdxToMidiChannel(step->instrument);
+    if (channel == kNoChannel)
+        return;
+    const int instrumentIndex = int(channel) - 1;
+    if (instrumentIndex < 0 || instrumentIndex >= kMidiInstrumentsCount)
+        return;
+
+    const uint8_t cc = midiCcSlotValue(instrumentIndex, slot);
+    const uint8_t sent = value > 127 ? 127 : value;
+    if (cc < 128)
+        sendCC(cc, sent, channel, false);
+    else if (cc == MIDI_CC_SPECIAL_PC)
+        sendProgramChange(sent, channel, false);
+    else if (cc == MIDI_CC_SPECIAL_CHAN_AT)
+        sendAfterTouch(sent, channel, false);
+    else if (cc == MIDI_CC_SPECIAL_POLY_AT)
+    {
+        const int note = step->note < 0 ? 0 : step->note;
+        sendPolyPressure(uint8_t(note > 127 ? 127 : note), sent, channel, false);
+    }
+}
+
+void Sequencer::sendStepMidiCcs(uint8_t row, const strPlayer::strPlayerTrack::strSendStep* step)
+{
+    if (!step || !isMidiInstrument(step->instrument))
+        return;
+
+    int scale = 100;
+    strPlayer::strPlayerTrack& playerRow = player.track[row];
+    if (playerRow.roll.isOn && (playerRow.roll.volumeOption == rollVolumeOption_up ||
+                                playerRow.roll.volumeOption == rollVolumeOption_down))
+    {
+        int base = playerRow.roll.startingVolume;
+        if (base < 0)
+            base = getInstrumentVolume(step->instrument);
+        if (base < 1)
+            base = 1;
+        const int vol = getRollVelo(row, step);
+        scale = clamp(vol * 100 / base, 0, 100);
+    }
+
+    for (int column = 0; column < 2; column++)
+    {
+        const int slot = strFxConsts::ccSlotFromFx(step->fx[column].type);
+        if (slot < 0)
+            continue;
+        const int raw = step->fx[column].value > 127 ? 127 : step->fx[column].value;
+        sendMidiCcSlot(uint8_t(slot), uint8_t(raw * scale / 100), step);
     }
 }
 

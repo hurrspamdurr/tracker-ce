@@ -1,4 +1,5 @@
 #include "fileManagerDefs.h"
+#include "midiCcExt.h"
 #include "mtStructs.h"
 
 #include "fileManager.h"
@@ -35,6 +36,11 @@ void cFileManager::saveProjectFileToWorkspace()
 
         if (saveStatus == fileTransferEnd)
         {
+            if (!saveMidiCcExtBeside(cProjectFileNameInWorkspace))
+            {
+                stopOperationWithError(fmSaveError);
+                return;
+            }
             clearProjectChangedFlag();
             return;
         }
@@ -139,6 +145,7 @@ bool cFileManager::loadProjectFileFormFileStruct(strMtProject* project, strProje
 
     memcpy(&project->song, &pFile->projectDataAndHeader.project.song, sizeof(strSong));
     memcpy(&project->values, &pFile->projectDataAndHeader.project.values, sizeof(strMtValues));
+    resetMidiCcExt();
     //*proj=pFile.projectDataAndHeader.project;
     // mtProject.values=pFile.projectDataAndHeader.project.values;
     return true;
@@ -211,6 +218,7 @@ void cFileManager::getDefaultProject(struct strMtProject* source)
 
     getDefaultSong(&source->song);
     getDefaultValues(&source->values);
+    resetMidiCcExt();
 
 #if FILEMANAGER_HANDLE_SYNTH == 1
     for (int part = 0; part < kSynthInstrumentsCount; part++)

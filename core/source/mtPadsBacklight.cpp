@@ -34,6 +34,8 @@ void cMtPadsBacklight::update()
 
 void cMtPadsBacklight::setBackLayer(uint8_t state, uint8_t gamma_pwm, uint8_t n)
 {
+    if (n >= 48)
+        return;
     if (state)
     {
         leds->setLed(n, state, (gamma_pwm > frontLayer[n] ? gamma_pwm : frontLayer[n]));
@@ -52,6 +54,8 @@ void cMtPadsBacklight::setBackLayer(uint8_t state, uint8_t gamma_pwm, uint8_t n)
 
 void cMtPadsBacklight::setFrontLayer(uint8_t state, uint8_t gamma_pwm, uint8_t n)
 {
+    if (n >= 48)
+        return;
     if (state)
     {
         leds->setLed(n, state, (gamma_pwm > backLayer[n] ? gamma_pwm : backLayer[n]));
@@ -70,12 +74,16 @@ void cMtPadsBacklight::setFrontLayer(uint8_t state, uint8_t gamma_pwm, uint8_t n
 
 void cMtPadsBacklight::startBlink(uint8_t gamma_pwm, uint8_t n)
 {
+    if (n >= 48)
+        return;
     blinkLayer[n] = gamma_pwm;
     blinkCounter++;
 }
 
 void cMtPadsBacklight::stopBlink(uint8_t n)
 {
+    if (n >= 48)
+        return;
     if (blinkLayer[n] != 0)
     {
         blinkLayer[n] = 0;

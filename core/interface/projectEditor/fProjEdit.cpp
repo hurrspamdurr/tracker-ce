@@ -16,6 +16,7 @@
 
 #include "FileBrowser.h"
 #include "fileManager.h"
+#include "midiCcExt.h"
 
 #include "Platform.h"
 #include "config.h"
@@ -465,12 +466,10 @@ uint8_t cProjectEditor::loadProjectValues()
             mtProject.values.midiInstrument[channel].velocity = 127;
         }
 
-        for (uint8_t cc = 0; cc < 6; cc++)
+        for (uint8_t cc = 0; cc < kMidiCcSlotCount; cc++)
         {
-            if (mtProject.values.midiInstrument[channel].ccOut[cc] > 130)
-            {
-                mtProject.values.midiInstrument[channel].ccOut[cc] = 0;
-            }
+            if (midiCcSlotValue(channel, cc) > 130)
+                setMidiCcSlotValue(channel, cc, 0);
         }
     }
 

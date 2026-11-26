@@ -182,8 +182,31 @@ class Sequencer
             FX_TYPE_R7,
             FX_TYPE_R8,
             FX_TYPE_R9,
+            FX_TYPE_SEND_CC_G,
+            FX_TYPE_SEND_CC_H,
+            FX_TYPE_SEND_CC_I,
+            FX_TYPE_SEND_CC_J,
+            FX_TYPE_SEND_CC_K,
+            FX_TYPE_SEND_CC_L,
+            FX_TYPE_SEND_CC_M,
+            FX_TYPE_SEND_CC_N,
+            FX_TYPE_SEND_CC_O,
+            FX_TYPE_SEND_CC_P,
+            FX_TYPE_SEND_CC_Q,
+            FX_TYPE_SEND_CC_R,
+            FX_TYPE_SEND_CC_S,
+            FX_TYPE_SEND_CC_T,
+            FX_TYPE_SEND_CC_U,
+            FX_TYPE_SEND_CC_V,
+            FX_TYPE_SEND_CC_W,
+            FX_TYPE_SEND_CC_X,
+            FX_TYPE_SEND_CC_Y,
+            FX_TYPE_SEND_CC_Z,
 
         };
+
+        // 0..25 for CC A..Z, or -1 when `type` is not a MIDI CC FX.
+        static int ccSlotFromFx(uint8_t type);
 
         enum enRollPeriod
         {
@@ -1000,6 +1023,11 @@ class Sequencer
     void midiSendCC(uint8_t channel, uint8_t control, uint8_t value, uint8_t midiOut);
 
     void sendNoteOn(uint8_t track, strPlayer::strPlayerTrack::strSendStep* step);
+    void sendMidiCcSlot(uint8_t slot,
+                        uint8_t value,
+                        const strPlayer::strPlayerTrack::strSendStep* step);
+    void sendStepMidiCcs(uint8_t row, const strPlayer::strPlayerTrack::strSendStep* step);
+    bool stepCarriesRoll(const strPlayer::strPlayerTrack::strSendStep& step);
     void sendNoteOff(uint8_t track,
                      strPlayer::strPlayerTrack::strSendStep* step,
                      int8_t offOption = STEP_NOTE_OFF_DEFAULT);

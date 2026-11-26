@@ -3,6 +3,7 @@
 
 #include "core/modulesBase.h"
 
+#include "midiCcExt.h"
 #include "mtStructs.h"
 
 #include "mtSequencer.h"
@@ -365,9 +366,10 @@ class cInstrumentEditor : public ModuleBase
     float calcInstrumentSendsDecybelValue(uint8_t val);
 
     //----------------------------------
-    // instr MIDI
-    hControl ccNameListControl[6];
-    strList ccNameListData[6];
+    // instr MIDI. Eight columns; arrow buttons move between CC pages.
+    hControl ccNameListControl[8];
+    strList ccNameListData[8];
+    uint8_t midiCcPage = 0;
 
     uint8_t getActualMidiInstrumentCCValue(int ccIndex);
 

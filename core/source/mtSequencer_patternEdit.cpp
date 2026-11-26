@@ -187,9 +187,10 @@ uint8_t Sequencer::generateRandomFx()
     uint8_t retVal;
     for (uint8_t a = 0; a < 100; a++)
     {
-        retVal = utilMathRandom::random(fx.FX_TYPE_OFF + 1, FX_COUNT - FX_COUNT_HIDDEN_FXes + 1);
-        if (retVal != fx.FX_TYPE_TEMPO && retVal != fx.FX_TYPE_BREAK_PATTERN // breaka nie chcemy
-        )
+        const int visible = FX_COUNT - FX_COUNT_HIDDEN_FXes;
+        const int menu = utilMathRandom::random(1, visible);
+        retVal = interfaceGlobals.fxIDs[menu];
+        if (retVal != fx.FX_TYPE_TEMPO && retVal != fx.FX_TYPE_BREAK_PATTERN)
             break;
     }
     return retVal;
@@ -1744,6 +1745,9 @@ void Sequencer::setPasteSelection(uint8_t stepFrom,
 //@formatter:off
 AUDIO_CORE_RAM int16_t Sequencer::getFxMax(uint8_t fxID, bool forRandom)
 {
+    if (strFxConsts::ccSlotFromFx(fxID) >= 0)
+        return 127;
+
     switch (fxID)
     {
         case fx.FX_TYPE_VOLUME: return 100;
@@ -1762,13 +1766,6 @@ AUDIO_CORE_RAM int16_t Sequencer::getFxMax(uint8_t fxID, bool forRandom)
         case fx.FX_TYPE_SAMPLE_SLICE: return 47;
         case fx.FX_TYPE_REVERSE_PLAYBACK: return 1;
         case fx.FX_TYPE_ROLL: return (fx.ROLL_PERIOD_MAX + 1) * (fx.rollNoteDir_max + 1) - 1;
-
-        case fx.FX_TYPE_SEND_CC_A:
-        case fx.FX_TYPE_SEND_CC_B:
-        case fx.FX_TYPE_SEND_CC_C:
-        case fx.FX_TYPE_SEND_CC_D:
-        case fx.FX_TYPE_SEND_CC_E:
-        case fx.FX_TYPE_SEND_CC_F: return 127;
 
         case fx.FX_TYPE_FILTER_LFO:
         case fx.FX_TYPE_PANNING_LFO:
