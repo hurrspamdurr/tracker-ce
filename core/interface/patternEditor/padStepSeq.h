@@ -7,8 +7,8 @@
 // Tracker Mini has no pad grid; the calls below are empty there.
 //
 // The grid reads and writes the pattern the pattern editor is showing.
-// There is no second pattern. See padStepSeq.cpp for the column map,
-// the scroll link, and the hold-and-turn controls.
+// There is no second pattern. The rightmost four columns are the
+// lane, track, euclid, and edit controls. See padStepSeq.cpp.
 
 #ifndef TRACKER_MINI
 

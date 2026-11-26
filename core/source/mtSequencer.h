@@ -963,6 +963,15 @@ class Sequencer
         player.preRollMetronomeEndCalback = preRollMetronomeEndCalback;
     };
 
+    // Pad-step reverse. Playback only: not stored in the pattern.
+    // loops == 0 stays reversed until stop. Otherwise the track plays
+    // that many pattern loops in reverse, then returns to forward.
+    // stop() clears it.
+    void setPadTrackReverse(uint8_t track, bool enabled, uint8_t loops);
+    bool padTrackReverseEnabled(uint8_t track) const;
+    void clearPadTrackReverse();
+    int16_t trackActualPos(uint8_t track) const;
+
   private:
     static constexpr int kTicksInStep = 576;
     static constexpr size_t kExternalTempoCounterSize = 24 * 2;
