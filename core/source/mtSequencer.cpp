@@ -30,6 +30,49 @@
 
 Sequencer sequencer;
 
+// Pad-step reverse. Ordinary BSS, read from the audio thread. A zero
+// loops value means "stay reversed". Nothing here is pattern data.
+static uint8_t padReverseOn[kAllTracks];
+static uint8_t padReverseLoops[kAllTracks];
+static uint8_t padReverseLeft[kAllTracks];
+static uint8_t padPingPongBack[kAllTracks];
+
+void Sequencer::setPadTrackReverse(uint8_t track, bool enabled, uint8_t loops)
+{
+    if (track >= kAllTracks)
+        return;
+
+    padReverseLoops[track] = loops;
+    padReverseLeft[track] = loops;
+    padReverseOn[track] = enabled ? 1 : 0;
+    if (loops == kPadPlayPingPong)
+        padPingPongBack[track] = 0;
+}
+
+bool Sequencer::padTrackReverseEnabled(uint8_t track) const
+{
+    if (track >= kAllTracks)
+        return false;
+    return padReverseOn[track] != 0;
+}
+
+int16_t Sequencer::trackActualPos(uint8_t track) const
+{
+    if (track >= kAllTracks)
+        return 0;
+    return player.track[track].actual_pos;
+}
+
+void Sequencer::clearPadTrackReverse()
+{
+    for (int track = 0; track < kAllTracks; track++)
+    {
+        padReverseOn[track] = 0;
+        padReverseLeft[track] = 0;
+        padPingPongBack[track] = 0;
+    }
+}
+
 __NOINIT(EXTERNAL_RAM)
 Sequencer::strPattern seq[2];
 
@@ -1514,6 +1557,7 @@ void Sequencer::stop(StopContext context)
 
     player.isPlay = 0;
     player.isStop = 1;
+    clearPadTrackReverse();
     player.isREC = 0;
     player.startRecOnExtClk = 0;
 
@@ -1721,6 +1765,82 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
     }
 
     player.endOfPattern = false;
+
+    // Normal pattern play only. Performance play modes keep their own direction.
+    // The absolute counter still walks the pattern length, so song mode and
+    // the other tracks keep the same loop timing.
+    if (!player.performanceMode && playMode == PLAYMODE_FORWARD && padReverseOn[row])
+    {
+        int startPos = player.selectionModeLooped ? player.loopSelection.firstStep : 0;
+        int lastPos = player.selectionModeLooped
+                        ? std::min<int>(player.loopSelection.lastStep, trackLength)
+                        : trackLength;
+
+        if (player.selectionModeLooped && lastPos < player.loopSelection.firstStep)
+        {
+            stop(StopContext::audioCallback);
+            return;
+        }
+
+        if (player.breakPattern)
+        {
+            player.track[row].actual_pos = startPos;
+            player.track[row].actual_pos_absolute = startPos;
+            if (row == kAllTracks - 1)
+                player.endOfPattern = true;
+            return;
+        }
+
+        const bool pingPong = padReverseLoops[row] == kPadPlayPingPong;
+        const bool backward = !pingPong || padPingPongBack[row] != 0;
+
+        player.track[row].actual_pos_absolute++;
+        if (player.track[row].actual_pos_absolute > lastPos)
+        {
+            player.track[row].actual_pos_absolute = startPos;
+            if (row == kAllTracks - 1)
+                player.endOfPattern = true;
+            if (!player.selectionModeLooped)
+                player.track[row].actual_pos_absolute = 0;
+        }
+
+        if (backward)
+        {
+            if (player.track[row].actual_pos <= startPos)
+            {
+                player.track[row].actual_pos = lastPos;
+                player.track[row].passCount++;
+                if (pingPong)
+                    padPingPongBack[row] = 0;
+                else if (padReverseLoops[row] != kPadPlayInfinite)
+                {
+                    if (padReverseLeft[row] > 0)
+                        padReverseLeft[row]--;
+                    if (padReverseLeft[row] == 0)
+                        padReverseOn[row] = 0;
+                }
+            }
+            else
+            {
+                player.track[row].actual_pos--;
+            }
+        }
+        else
+        {
+            player.track[row].actual_pos++;
+            if (player.track[row].actual_pos > lastPos)
+            {
+                player.track[row].actual_pos = startPos;
+                player.track[row].passCount++;
+                if (pingPong)
+                    padPingPongBack[row] = 1;
+                if (row == kAllTracks - 1)
+                    player.endOfPattern = true;
+            }
+        }
+        return;
+    }
+
     switch (playMode)
     {
         case PLAYMODE_FORWARD:

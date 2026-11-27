@@ -1,5 +1,6 @@
 #include "mtStructs.h"
 #include "patternEditor/patternEditor.h"
+#include "patternEditor/padStepSeq.h"
 #include <assert.h>
 #include <limits.h>
 #include <mtAudioExport.h>
@@ -247,6 +248,9 @@ void cPatternEditor::update()
     showPattern(0, buttons->isButtonPressed(interfaceButtonShift));
 
     readPatternState();
+
+    if (padStepSeqIsOn())
+        padStepSeqOnFrame(!sequencer.isStop(), trackerPattern.playheadPosition);
 
     if (sequencer.isStop())
     {
@@ -2020,6 +2024,9 @@ void functEncoder(int16_t value)
         return;
     }
 
+    if (padStepSeqOnEncoder(value))
+        return;
+
     if (PTE->editMode == 0)
     {
         value = interfaceGlobals.invertValForList ? -value : value;
@@ -2840,6 +2847,10 @@ static void functFx2(uint8_t state)
     }
 }
 
+#ifndef TRACKER_MINI
+static bool padStepSwallowPatternRelease = false;
+#endif
+
 static void functPattern(uint8_t state)
 {
     if (state == buttonPress)
@@ -2849,8 +2860,24 @@ static void functPattern(uint8_t state)
             return;
         }
 
+#ifndef TRACKER_MINI
+        if (PTE->buttons->isButtonPressed(interfaceButtonShift))
+        {
+            padStepSeqToggle();
+            padStepSwallowPatternRelease = true;
+            return;
+        }
+#endif
+
         PTE->cancelPopups();
     }
+#ifndef TRACKER_MINI
+    else if (state == buttonRelease && padStepSwallowPatternRelease)
+    {
+        padStepSwallowPatternRelease = false;
+        return;
+    }
+#endif
     else if (state == buttonRelease && PTE->patternButtonReleaseActive)
     {
         PTE->setPatternViewMode(0);
@@ -2876,6 +2903,7 @@ static void functPlayAction()
 {
     if (sequencer.getSeqState() == Sequencer::SEQ_STATE_STOP)
     {
+        padStepSeqOnPlay();
         if (PTE->buttons->isButtonPressed(interfaceButtonRec))
         {
             if (PTE->fillState > 0)
@@ -4173,6 +4201,12 @@ void cPatternEditor::loadPatternsStatus()
 
 void cPatternEditor::lightUpPadBoard()
 {
+    if (padStepSeqIsOn() && selectedPlace < 0 && fillState == 0)
+    {
+        padStepSeqPaint();
+        return;
+    }
+
     padsBacklight.clearGlobalPads(1, 1, 0);
 
     //--------------------------------------------
@@ -4604,6 +4638,9 @@ static void functPads(uint8_t pad, uint8_t state, int16_t velo)
 
         return;
     }
+
+    if (PTE->fillState == 0 && padStepSeqOnPad(pad, state))
+        return;
 
     // obsluga podswietlenia
     if (state == buttonRelease)

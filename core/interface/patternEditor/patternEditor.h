@@ -367,6 +367,8 @@ class cPatternEditor : public ModuleBase
     void showTitleBarPattern();
     void showActualParamOnBar(bool forceShow = false);
     void hideActualParamOnBar();
+    void showPadStepStatus(const char* text);
+    void clearPadStepStatus();
 
     uint8_t lastTitleBarParamValue = 0xFF;
     uint8_t lastTitleBarFx = 0xFF;

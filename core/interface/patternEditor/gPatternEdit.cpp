@@ -1671,6 +1671,26 @@ void cPatternEditor::showTitleBarPattern()
     titleBar->setTitle(cTitlePattern);
 }
 
+void cPatternEditor::showPadStepStatus(const char* text)
+{
+    if (text == nullptr || text[0] == 0)
+    {
+        clearPadStepStatus();
+        return;
+    }
+
+    titleBar->setRightLabel(text);
+    titleBar->showRightLabel(true);
+}
+
+void cPatternEditor::clearPadStepStatus()
+{
+    lastTitleBarParam = 0xFF;
+    lastTitleBarParamValue = 0xFF;
+    lastTitleBarFx = 0xFF;
+    showActualParamOnBar(true);
+}
+
 void cPatternEditor::showActualParamOnBar(bool forceShow)
 {
     if (mtConfig.general.patternInfo != 0)
