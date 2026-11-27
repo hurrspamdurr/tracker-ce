@@ -35,6 +35,7 @@ Sequencer sequencer;
 static uint8_t padReverseOn[kAllTracks];
 static uint8_t padReverseLoops[kAllTracks];
 static uint8_t padReverseLeft[kAllTracks];
+static uint8_t padPingPongBack[kAllTracks];
 
 void Sequencer::setPadTrackReverse(uint8_t track, bool enabled, uint8_t loops)
 {
@@ -44,6 +45,8 @@ void Sequencer::setPadTrackReverse(uint8_t track, bool enabled, uint8_t loops)
     padReverseLoops[track] = loops;
     padReverseLeft[track] = loops;
     padReverseOn[track] = enabled ? 1 : 0;
+    if (loops == kPadPlayPingPong)
+        padPingPongBack[track] = 0;
 }
 
 bool Sequencer::padTrackReverseEnabled(uint8_t track) const
@@ -66,6 +69,7 @@ void Sequencer::clearPadTrackReverse()
     {
         padReverseOn[track] = 0;
         padReverseLeft[track] = 0;
+        padPingPongBack[track] = 0;
     }
 }
 
@@ -1787,30 +1791,52 @@ void Sequencer::switchRowStep(uint8_t row) // przełączamy stepy w zależności
             return;
         }
 
+        const bool pingPong = padReverseLoops[row] == kPadPlayPingPong;
+        const bool backward = !pingPong || padPingPongBack[row] != 0;
+
         player.track[row].actual_pos_absolute++;
         if (player.track[row].actual_pos_absolute > lastPos)
         {
             player.track[row].actual_pos_absolute = startPos;
             if (row == kAllTracks - 1)
                 player.endOfPattern = true;
+            if (!player.selectionModeLooped)
+                player.track[row].actual_pos_absolute = 0;
         }
 
-        if (player.track[row].actual_pos <= startPos)
+        if (backward)
         {
-            player.track[row].actual_pos = lastPos;
-            player.track[row].passCount++;
-
-            if (padReverseLoops[row] != 0)
+            if (player.track[row].actual_pos <= startPos)
             {
-                if (padReverseLeft[row] > 0)
-                    padReverseLeft[row]--;
-                if (padReverseLeft[row] == 0)
-                    padReverseOn[row] = 0;
+                player.track[row].actual_pos = lastPos;
+                player.track[row].passCount++;
+                if (pingPong)
+                    padPingPongBack[row] = 0;
+                else if (padReverseLoops[row] != kPadPlayInfinite)
+                {
+                    if (padReverseLeft[row] > 0)
+                        padReverseLeft[row]--;
+                    if (padReverseLeft[row] == 0)
+                        padReverseOn[row] = 0;
+                }
+            }
+            else
+            {
+                player.track[row].actual_pos--;
             }
         }
         else
         {
-            player.track[row].actual_pos--;
+            player.track[row].actual_pos++;
+            if (player.track[row].actual_pos > lastPos)
+            {
+                player.track[row].actual_pos = startPos;
+                player.track[row].passCount++;
+                if (pingPong)
+                    padPingPongBack[row] = 1;
+                if (row == kAllTracks - 1)
+                    player.endOfPattern = true;
+            }
         }
         return;
     }

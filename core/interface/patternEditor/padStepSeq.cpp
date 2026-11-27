@@ -40,8 +40,10 @@
 // the note. Several held steps take the same encoder change.
 // These presses do not send MIDI.
 //
-// Reverse is playback state in the sequencer, not pattern data. Stop
-// clears it. Euclid, shift, double, and halve write the current track.
+// Reverse is playback state in the sequencer, not pattern data. The
+// hold list is 1..16 loops, infinite, then ping-pong. Stop clears it.
+// Euclid, shift, double, and halve write the current track. New notes
+// use the last instrument, including MIDI channels on sample tracks.
 
 namespace
 {
@@ -121,8 +123,8 @@ int soloTrack = -1;
 uint8_t savedSampleMute[kSampleTracks];
 uint8_t savedMidiMute[kMaxMidiTracksInTrackers];
 char statusLine1[24];
-char statusLine2[24];
-char statusTitle[40];
+char statusLine2[48];
+char statusTitle[64];
 
 int columnOf(uint8_t pad)
 {
@@ -267,21 +269,13 @@ int trackPlayhead()
 
 uint8_t instrumentForTrack(int track)
 {
+    // Same choice the pattern editor uses when it inserts a note: the last
+    // instrument, kept if it is legal for this track. Sample tracks may use
+    // MIDI channels. MIDI tracks stay on MIDI channels.
     int inst = mtProject.values.lastUsedInstrument;
-    if (inst < 0 || inst >= kTotalInstrumentsCount)
+    if (inst < 0 || inst > 127)
         inst = 0;
-
-    if (isSampleTrack(track))
-    {
-        if (inst >= kSampleInstrumentsCount)
-            inst = 0;
-    }
-    else if (!isMidiInstrument(inst))
-    {
-        inst = MIDI_INSTRUMENTS_START_IDX;
-    }
-
-    return uint8_t(inst);
+    return sequencer.changeInstrumentInSpecificOrder(int8_t(inst), 0, !isSampleTrack(track));
 }
 
 uint8_t noteForNewStep()
@@ -290,18 +284,6 @@ uint8_t noteForNewStep()
     if (note == 0 || note > Sequencer::STEP_NOTE_MAX)
         note = uint8_t(Sequencer::STEP_NOTE_DEFAULT);
     return note;
-}
-
-int instrumentMin(int track)
-{
-    return isSampleTrack(track) ? 0 : int(MIDI_INSTRUMENTS_START_IDX);
-}
-
-int instrumentMax(int track)
-{
-    if (isSampleTrack(track))
-        return int(kSampleInstrumentsCount) - 1;
-    return int(MIDI_INSTRUMENTS_START_IDX) + int(kMidiInstrumentsCount) - 1;
 }
 
 bool trackIsMuted(int track)
@@ -384,6 +366,16 @@ void hideStatus()
     patternEditor.clearPadStepStatus();
 }
 
+void formatReverseMode(int count, char* buf, size_t size)
+{
+    if (count == Sequencer::kPadPlayPingPong)
+        snprintf(buf, size, "Ping-pong");
+    else if (count == Sequencer::kPadPlayInfinite)
+        snprintf(buf, size, "Reverse inf");
+    else
+        snprintf(buf, size, "Reverse %d", count);
+}
+
 void showHeldStatus()
 {
     char line1[24];
@@ -406,12 +398,7 @@ void showHeldStatus()
             snprintf(line1, sizeof line1, "Euc %d/%d", int(euclid[track].hits), int(euclid[track].length));
             snprintf(line2, sizeof line2, "Rot %d", int(euclid[track].rotate));
             break;
-        case kCtrlReverse:
-            if (reverseLoops[track] == 0)
-                snprintf(line1, sizeof line1, "Reverse inf");
-            else
-                snprintf(line1, sizeof line1, "Reverse %d", int(reverseLoops[track]));
-            break;
+        case kCtrlReverse: formatReverseMode(reverseLoops[track], line1, sizeof line1); break;
         case kCtrlDouble: snprintf(line1, sizeof line1, "Double / halve"); break;
         case kCtrlFills: snprintf(line1, sizeof line1, "%s", fillName(fillChoice)); break;
         default: break;
@@ -710,34 +697,42 @@ void toggleReverse()
     int track = currentTrack();
     bool enabled = sequencer.padTrackReverseEnabled(uint8_t(track));
     sequencer.setPadTrackReverse(uint8_t(track), !enabled, reverseLoops[track]);
+    char text[24];
     if (!enabled)
-    {
-        if (reverseLoops[track] == 0)
-            showBrief("Reverse inf");
-        else
-        {
-            char text[16];
-            snprintf(text, sizeof text, "Reverse %d", int(reverseLoops[track]));
-            showBrief(text);
-        }
-    }
+        formatReverseMode(reverseLoops[track], text, sizeof text);
     else
-    {
-        showBrief("Forward");
-    }
+        snprintf(text, sizeof text, "Forward");
+    showBrief(text);
     padStepSeqPaint();
+}
+
+int reverseListIndex(int count)
+{
+    if (count >= 1 && count <= kReverseLoopMax)
+        return count - 1;
+    if (count == Sequencer::kPadPlayInfinite)
+        return kReverseLoopMax;
+    return kReverseLoopMax + 1;
+}
+
+int reverseListValue(int index)
+{
+    const int span = kReverseLoopMax + 2;
+    if (index < 0)
+        index = span - 1;
+    if (index >= span)
+        index = 0;
+    if (index < kReverseLoopMax)
+        return index + 1;
+    if (index == kReverseLoopMax)
+        return Sequencer::kPadPlayInfinite;
+    return Sequencer::kPadPlayPingPong;
 }
 
 void nudgeReverseLoops(int dir)
 {
     int track = currentTrack();
-    int count = reverseLoops[track];
-    // 0 is infinite, then 1..kReverseLoopMax.
-    if (dir > 0)
-        count = count >= kReverseLoopMax ? 0 : count + 1;
-    else
-        count = count <= 0 ? kReverseLoopMax : count - 1;
-    reverseLoops[track] = uint8_t(count);
+    reverseLoops[track] = uint8_t(reverseListValue(reverseListIndex(reverseLoops[track]) + dir));
 
     if (sequencer.padTrackReverseEnabled(uint8_t(track)))
         sequencer.setPadTrackReverse(uint8_t(track), true, reverseLoops[track]);
@@ -937,24 +932,17 @@ void adjustNote(Step* st, int delta)
 void adjustInstrument(Step* st, int delta)
 {
     int track = currentTrack();
-    int minInst = instrumentMin(track);
-    int maxInst = instrumentMax(track);
     int inst = st->instrument;
-
     if (st->note < 0)
     {
         st->note = int8_t(noteForNewStep());
-        inst = instrumentForTrack(track);
+        inst = mtProject.values.lastUsedInstrument;
     }
-    if (inst < minInst || inst > maxInst)
-        inst = instrumentForTrack(track);
+    if (inst < 0 || inst > 127)
+        inst = 0;
 
-    inst += delta;
-    if (inst < minInst)
-        inst = minInst;
-    if (inst > maxInst)
-        inst = maxInst;
-    st->instrument = uint8_t(inst);
+    st->instrument = sequencer.changeInstrumentInSpecificOrder(
+      int8_t(inst), int16_t(delta), !isSampleTrack(track));
 }
 
 void adjustFx(Step* st, int slot, int delta)
@@ -1044,17 +1032,38 @@ int stepValueKey(const Step* st)
     return st->note;
 }
 
+void formatInstrumentName(int inst, char* buf, size_t size)
+{
+    if (inst >= int(SYNTH_INSTRUMENTS_START_IDX))
+    {
+        snprintf(buf, size, "Synth %d", inst - int(SYNTH_INSTRUMENTS_START_IDX) + 1);
+        return;
+    }
+    if (inst >= int(MIDI_INSTRUMENTS_START_IDX))
+    {
+        snprintf(buf,
+                 size,
+                 "%d. MIDI Channel %d",
+                 inst + 3,
+                 (inst - int(MIDI_INSTRUMENTS_START_IDX)) + 1);
+        return;
+    }
+    if (inst >= 0 && inst < int(kSampleInstrumentsCount))
+    {
+        snprintf(buf, size, "%d. %s", inst + 1, mtProject.instrument[inst].sample.file_name);
+        return;
+    }
+    snprintf(buf, size, "Off");
+}
+
 void formatValue(const Step* st, char* buf, size_t size)
 {
-    int track = currentTrack();
     if (padLane == kLaneInstrument)
     {
         if (st->note < 0)
             snprintf(buf, size, "Off");
-        else if (isSampleTrack(track))
-            snprintf(buf, size, "Inst %d", int(st->instrument) + 1);
         else
-            snprintf(buf, size, "MIDI %d", int(st->instrument) - int(MIDI_INSTRUMENTS_START_IDX) + 1);
+            formatInstrumentName(st->instrument, buf, size);
         return;
     }
 

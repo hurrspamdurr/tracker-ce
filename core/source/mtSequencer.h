@@ -963,10 +963,13 @@ class Sequencer
         player.preRollMetronomeEndCalback = preRollMetronomeEndCalback;
     };
 
-    // Pad-step reverse. Playback only: not stored in the pattern.
-    // loops == 0 stays reversed until stop. Otherwise the track plays
-    // that many pattern loops in reverse, then returns to forward.
+    // Pad-step direction. Playback only: not stored in the pattern.
+    // loops == kPadPlayInfinite stays reversed until stop.
+    // loops == kPadPlayPingPong alternates a forward pass and a backward pass.
+    // Any other value is how many pattern loops the track stays reversed.
     // stop() clears it.
+    static constexpr uint8_t kPadPlayInfinite = 0;
+    static constexpr uint8_t kPadPlayPingPong = 255;
     void setPadTrackReverse(uint8_t track, bool enabled, uint8_t loops);
     bool padTrackReverseEnabled(uint8_t track) const;
     void clearPadTrackReverse();
